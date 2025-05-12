@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
+import DemoForm from './DemoForm';
+import AuthForm from './AuthForm';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isDemoFormOpen, setIsDemoFormOpen] = useState(false);
+  const [isAuthFormOpen, setIsAuthFormOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,7 +25,18 @@ const Header = () => {
     };
   }, []);
 
+  const handleDemoClick = () => {
+    setIsDemoFormOpen(true);
+    setMobileMenuOpen(false);
+  };
+
+  const handleAuthClick = () => {
+    setIsAuthFormOpen(true);
+    setMobileMenuOpen(false);
+  };
+
   return (
+    <>
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       isScrolled ? 'bg-white/90 backdrop-blur-md shadow-sm' : 'bg-transparent'
     }`}>
@@ -48,11 +63,18 @@ const Header = () => {
         </nav>
 
         <div className="hidden md:flex items-center space-x-4">
-          <Button variant="outline" className="border-duomind-purple text-duomind-purple hover:bg-duomind-purple/5">
+            <Button 
+              variant="outline" 
+              className="border-duomind-purple text-duomind-purple hover:bg-duomind-purple/5"
+              onClick={handleDemoClick}
+            >
             Записаться на демо
           </Button>
-          <Button className="bg-duomind-purple hover:bg-duomind-purple/90">
-            Попробовать сейчас
+            <Button 
+              className="bg-duomind-purple hover:bg-duomind-purple/90"
+              onClick={handleAuthClick}
+            >
+              Вход для клиентов
           </Button>
         </div>
 
@@ -97,17 +119,35 @@ const Header = () => {
               Преимущества
             </a>
             <div className="flex flex-col space-y-2 pt-2">
-              <Button variant="outline" className="border-duomind-purple text-duomind-purple w-full justify-center">
+                <Button 
+                  variant="outline" 
+                  className="border-duomind-purple text-duomind-purple w-full justify-center"
+                  onClick={handleDemoClick}
+                >
                 Записаться на демо
               </Button>
-              <Button className="bg-duomind-purple hover:bg-duomind-purple/90 w-full justify-center">
-                Попробовать сейчас
+                <Button 
+                  className="bg-duomind-purple hover:bg-duomind-purple/90 w-full justify-center"
+                  onClick={handleAuthClick}
+                >
+                  Вход для клиентов
               </Button>
             </div>
           </div>
         </div>
       )}
     </header>
+
+      <DemoForm 
+        isOpen={isDemoFormOpen} 
+        onClose={() => setIsDemoFormOpen(false)} 
+      />
+
+      <AuthForm
+        isOpen={isAuthFormOpen}
+        onClose={() => setIsAuthFormOpen(false)}
+      />
+    </>
   );
 };
 

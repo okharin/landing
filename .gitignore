@@ -1,14 +1,16 @@
 # Dependencies
-node_modules
-.pnp
+node_modules/
+.pnp/
 .pnp.js
 
 # Testing
 coverage
 
 # Production
-dist
-build
+dist/
+build/
+.next/
+out/
 
 # Misc
 .DS_Store
@@ -24,10 +26,29 @@ yarn-debug.log*
 yarn-error.log*
 
 # Editor directories and files
-.idea
-.vscode
+.idea/
+.vscode/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.sw? 
+*.swp
+*.swo
+
+# System files
+Thumbs.db
+
+# Loaded files
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Database files
+*.sqlite
+*.sqlite3
+
+# Docker
+.docker/
+
+# Prisma
+prisma/*.db
+prisma/migrations/ 

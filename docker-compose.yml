@@ -1,9 +1,52 @@
 version: '3.8'
 
 services:
-  web:
-    build: .
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
     environment:
-      - NODE_ENV=production 
+      - VITE_API_URL=http://backend:3000
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/duomind
+      - JWT_SECRET=sBzx9vMCEkEo8JVQOIb0IwFtLpOiwFWyFFae01Si3uQ=
+      - EMAIL_USER=o.kharin@gmail.com
+      - EMAIL_PASS=yxip svwf svhd lbex
+      - ADMIN_EMAIL=andranik.zakharan@gmail.com
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./server/uploads:/app/uploads
+    command: >
+      sh -c "npm run db:init && npm start"
+
+  db:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=duomind
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data: 
