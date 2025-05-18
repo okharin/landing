@@ -42,7 +42,7 @@ const Analytics: React.FC = () => {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         const isAdmin = user.role === 'ADMIN';
         
-        const response = await fetch('http://localhost:3000/api/analytics', {
+        const response = await fetch('http://localhost:8000/api/analytics', {
           headers: {
             'user-id': user.id || '',
           },
@@ -114,7 +114,9 @@ const Analytics: React.FC = () => {
                       <Typography variant="subtitle2" color="textSecondary">
                         Процент выполнения
                       </Typography>
-                      <Typography variant="h4">{data.completionRate.toFixed(1)}%</Typography>
+                      <Typography variant="h4">
+                        {typeof data.completionRate === 'number' ? data.completionRate.toFixed(1) : '0.0'}%
+                      </Typography>
                     </Grid>
                   </Grid>
                 </CardContent>

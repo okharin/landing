@@ -45,7 +45,7 @@ export function TaskList() {
       }
 
       const { id } = JSON.parse(userData);
-      const response = await fetch('http://localhost:3000/api/tasks', {
+      const response = await fetch('http://localhost:8000/api/tasks', {
         headers: {
           'user-id': id.toString()
         }
@@ -56,6 +56,25 @@ export function TaskList() {
       }
 
       const data = await response.json();
+      console.log('Получены задачи:', data.map((task: Task) => ({
+        id: task.id,
+        status: task.status,
+        progress: task.progress,
+        outputFiles: task.outputFiles
+      })));
+
+      // Проверяем изменения в задачах
+      data.forEach((newTask: Task) => {
+        const oldTask = tasks.find(t => t.id === newTask.id);
+        if (oldTask && oldTask.progress !== newTask.progress) {
+          console.log(`Прогресс задачи ${newTask.id} изменился:`, {
+            old: oldTask.progress,
+            new: newTask.progress,
+            status: newTask.status
+          });
+        }
+      });
+
       setTasks(data);
       setError('');
     } catch (err) {
@@ -78,22 +97,28 @@ export function TaskList() {
       return;
     }
 
-    const { id } = JSON.parse(userData);
+    const user = JSON.parse(userData);
     const formData = new FormData();
     formData.append('title', title);
     formData.append('file', file);
+    formData.append('userName', user.name);
+    formData.append('userEmail', user.email);
+    formData.append('userCompany', user.company || '');
 
     console.log('Отправляем запрос на создание задачи:', {
       title,
       fileName: file.name,
-      userId: id
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email,
+      userCompany: user.company
     });
 
     try {
-      const response = await fetch('http://localhost:3000/api/tasks', {
+      const response = await fetch('http://localhost:8000/api/tasks', {
         method: 'POST',
         headers: {
-          'user-id': id.toString()
+          'user-id': user.id.toString()
         },
         body: formData
       });
@@ -126,7 +151,7 @@ export function TaskList() {
 
     try {
       const { id } = JSON.parse(userData);
-      const response = await fetch(`http://localhost:3000/api/tasks/${taskId}`, {
+      const response = await fetch(`http://localhost:8000/api/tasks/${taskId}`, {
         method: 'DELETE',
         headers: {
           'user-id': id.toString()
@@ -152,7 +177,7 @@ export function TaskList() {
 
     try {
       const { id } = JSON.parse(userData);
-      const response = await fetch(`http://localhost:3000/api/files/${filename}`, {
+      const response = await fetch(`http://localhost:8000/api/files/${filename}`, {
         headers: {
           'user-id': id.toString()
         }
@@ -207,15 +232,25 @@ export function TaskList() {
   };
 
   const toggleResults = (taskId: string) => {
-    setExpandedResults(prev => ({
-      ...prev,
-      [taskId]: !prev[taskId]
-    }));
+    console.log('Toggle results for task:', taskId);
+    console.log('Current expandedResults:', expandedResults);
+    setExpandedResults(prev => {
+      const newState = {
+        ...prev,
+        [taskId]: !prev[taskId]
+      };
+      console.log('New expandedResults:', newState);
+      return newState;
+    });
   };
 
-  // Функция для определения, должны ли быть видны результаты
   const shouldShowResults = (task: Task) => {
-    return task.status === 'PROCESSING' || expandedResults[task.id];
+    console.log('Checking shouldShowResults for task:', {
+      id: task.id,
+      status: task.status,
+      isExpanded: expandedResults[task.id]
+    });
+    return task.status === 'COMPLETED' || expandedResults[task.id];
   };
 
   const filteredTasks = tasks.filter(task =>
@@ -229,6 +264,38 @@ export function TaskList() {
   };
 
   const getTotalPages = () => Math.ceil(filteredTasks.length / tasksPerPage);
+
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'Дата не указана';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date:', dateString);
+        return 'Некорректная дата';
+      }
+      return format(date, 'd MMMM yyyy, HH:mm', { locale: ru });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Ошибка форматирования даты';
+    }
+  };
+
+  const formatFileName = (fileName: string) => {
+    // Удаляем расширение файла и timestamp
+    const nameWithoutExtension = fileName.replace(/\.[^/.]+$/, '').replace(/_\d+$/, '');
+    
+    // Преобразуем названия по шаблонам
+    if (nameWithoutExtension.startsWith('pattern_')) {
+      const number = nameWithoutExtension.split('_')[1];
+      return `Заполненный шаблон №${number}`;
+    } else if (nameWithoutExtension.startsWith('check_')) {
+      const number = nameWithoutExtension.split('_')[1];
+      return `Проверка заполнения шаблона №${number}`;
+    }
+    
+    return nameWithoutExtension;
+  };
 
   if (loading) {
     return <div className="text-center">Загрузка...</div>;
@@ -280,7 +347,7 @@ export function TaskList() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-500">
-                      {format(new Date(task.createdAt), 'd MMMM yyyy, HH:mm', { locale: ru })}
+                      {formatDate(task.createdAt)}
                     </span>
                     <Button
                       variant="ghost"
@@ -299,53 +366,64 @@ export function TaskList() {
 
                 {task.status === 'PROCESSING' && (
                   <div className="space-y-1">
-                    <Progress value={task.progress} />
-                    <p className="text-sm text-gray-500">{task.progress}%</p>
+                    <Progress 
+                      value={task.progress} 
+                      className="h-2 bg-blue-100"
+                    />
+                    <p className="text-sm text-gray-500">
+                      Прогресс: {task.progress}%
+                    </p>
                   </div>
                 )}
 
-                {task.outputFiles.length > 0 && (
+                {task.outputFiles?.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium">
                         Результаты ({task.outputFiles.length} {task.outputFiles.length === 1 ? 'файл' : 'файлов'}):
                       </p>
-                      {task.status !== 'PROCESSING' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleResults(task.id)}
-                          className="flex items-center space-x-1"
-                        >
-                          {expandedResults[task.id] ? (
-                            <>
-                              <span>Скрыть</span>
-                              <ChevronUp className="h-4 w-4" />
-                            </>
-                          ) : (
-                            <>
-                              <span>Показать</span>
-                              <ChevronDown className="h-4 w-4" />
-                            </>
-                          )}
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleResults(task.id)}
+                        className="flex items-center space-x-1"
+                      >
+                        {expandedResults[task.id] ? (
+                          <>
+                            <span>Скрыть</span>
+                            <ChevronUp className="h-4 w-4" />
+                          </>
+                        ) : (
+                          <>
+                            <span>Показать</span>
+                            <ChevronDown className="h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
                     </div>
-                    {shouldShowResults(task) && (
-                      <div className="flex flex-wrap gap-2">
-                        {task.outputFiles.map((file, index) => (
-                          <Button
-                            key={index}
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDownloadFile(file)}
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Скачать файл {index + 1}
-                          </Button>
-                        ))}
+                    <div className={`transition-all duration-200 ${expandedResults[task.id] ? 'block' : 'hidden'}`}>
+                      <div className="grid grid-cols-2 gap-4">
+                        {task.outputFiles.map((file, index) => {
+                          const formattedName = formatFileName(file);
+                          // Определяем, к какому столбцу относится файл
+                          const isPattern = file.startsWith('pattern_');
+                          const isCheck = file.startsWith('check_');
+                          
+                          return (
+                            <div
+                              key={index}
+                              className={`flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 cursor-pointer ${
+                                isPattern ? 'col-start-1' : isCheck ? 'col-start-2' : ''
+                              }`}
+                              onClick={() => handleDownloadFile(file)}
+                            >
+                              <Download className="h-4 w-4" />
+                              <span>{formattedName}</span>
+                            </div>
+                          );
+                        })}
                       </div>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>

@@ -136,6 +136,44 @@ const requireAdmin = (req: AuthenticatedRequest, res: Response, next: NextFuncti
   }
   next();
 };
+// Авторизация
+app.post('/api/login', async (req: Request, res: Response): Promise<void> => {
+  const { email, password } = req.body;
+  console.log('Получен запрос на авторизацию:', { email });
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      console.log('Пользователь не найден:', email);
+      res.status(400).json({ error: 'Пользователь не найден' });
+      return;
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      console.log('Неверный пароль для пользователя:', email);
+      res.status(400).json({ error: 'Неверный пароль' });
+      return;
+    }
+
+    const userData = { 
+      id: user.id, 
+      email: user.email, 
+      name: user.name, 
+      company: user.company,
+      role: user.role 
+    };
+    console.log('Успешная авторизация, отправляем данные:', userData);
+    res.json(userData);
+  } catch (error) {
+    console.error('Ошибка при авторизации:', error);
+    res.status(500).json({ error: 'Ошибка при входе' });
+  }
+});
+
 
 // Регистрация
 app.post('/api/register', async (req: Request, res: Response): Promise<void> => {
@@ -179,43 +217,6 @@ app.post('/api/register', async (req: Request, res: Response): Promise<void> => 
   }
 });
 
-// Авторизация
-app.post('/api/login', async (req: Request, res: Response): Promise<void> => {
-  const { email, password } = req.body;
-  console.log('Получен запрос на авторизацию:', { email });
-
-  try {
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user) {
-      console.log('Пользователь не найден:', email);
-      res.status(400).json({ error: 'Пользователь не найден' });
-      return;
-    }
-
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      console.log('Неверный пароль для пользователя:', email);
-      res.status(400).json({ error: 'Неверный пароль' });
-      return;
-    }
-
-    const userData = { 
-      id: user.id, 
-      email: user.email, 
-      name: user.name, 
-      company: user.company,
-      role: user.role 
-    };
-    console.log('Успешная авторизация, отправляем данные:', userData);
-    res.json(userData);
-  } catch (error) {
-    console.error('Ошибка при авторизации:', error);
-    res.status(500).json({ error: 'Ошибка при входе' });
-  }
-});
 
 // Получение списка пользователей (только для админов)
 app.get('/api/users', authenticateUser, requireAdmin, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -376,7 +377,7 @@ app.post('/api/tasks', authenticateUser, upload.single('file'), async (req: Auth
     headers: req.headers
   });
 
-  const { title } = req.body;
+  const { title, userName, userEmail, userCompany } = req.body;
   const file = req.file;
 
   if (!file) {
@@ -402,7 +403,10 @@ app.post('/api/tasks', authenticateUser, upload.single('file'), async (req: Auth
     console.log('Создаем задачу в БД:', {
       title,
       inputFile: file.path,
-      userId: req.user!.id
+      userId: req.user!.id,
+      userName,
+      userEmail,
+      userCompany
     });
 
     const task = await prisma.task.create({
@@ -412,7 +416,12 @@ app.post('/api/tasks', authenticateUser, upload.single('file'), async (req: Auth
         userId: req.user!.id,
         status: 'PENDING',
         progress: 0,
-        outputFiles: []
+        outputFiles: [],
+        userInfo: {
+          name: userName,
+          email: userEmail,
+          company: userCompany
+        }
       },
     });
 

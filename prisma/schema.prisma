@@ -34,6 +34,7 @@ model Task {
   outputFiles String[]  // Массив путей к результатам обработки
   userId      Int
   user        User      @relation(fields: [userId], references: [id])
+  userInfo    Json?     // Информация о пользователе на момент создания задачи
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }

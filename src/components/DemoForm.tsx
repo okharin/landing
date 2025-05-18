@@ -25,7 +25,7 @@ const DemoForm = ({ isOpen, onClose }: DemoFormProps) => {
     setSubmitStatus('idle');
 
     try {
-      const response = await fetch('http://localhost:3000/api/send-demo-request', {
+      const response = await fetch('http://localhost:8000/api/send-demo-request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
