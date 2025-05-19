@@ -282,19 +282,21 @@ export function TaskList() {
   };
 
   const formatFileName = (fileName: string) => {
+
+    return fileName
     // Удаляем расширение файла и timestamp
-    const nameWithoutExtension = fileName.replace(/\.[^/.]+$/, '').replace(/_\d+$/, '');
+    // const nameWithoutExtension = fileName.replace(/\.[^/.]+$/, '').replace(/_\d+$/, '');
     
-    // Преобразуем названия по шаблонам
-    if (nameWithoutExtension.startsWith('pattern_')) {
-      const number = nameWithoutExtension.split('_')[1];
-      return `Заполненный шаблон №${number}`;
-    } else if (nameWithoutExtension.startsWith('check_')) {
-      const number = nameWithoutExtension.split('_')[1];
-      return `Проверка заполнения шаблона №${number}`;
-    }
+    // // Преобразуем названия по шаблонам
+    // if (nameWithoutExtension.startsWith('pattern_')) {
+    //   // const number = nameWithoutExtension.split('_')[1];
+    //   return `Заполненный шаблон`;
+    // } else if (nameWithoutExtension.startsWith('check_')) {
+    //   const number = nameWithoutExtension.split('_')[1];
+    //   return `Проверка заполнения шаблона №${number}`;
+    // }
     
-    return nameWithoutExtension;
+    // return nameWithoutExtension;
   };
 
   if (loading) {
