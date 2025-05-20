@@ -1,7 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
-
-const prisma = new PrismaClient();
+import { API_URL } from '@/config/api';
 
 export interface CreateUserData {
   email: string;
@@ -13,8 +10,6 @@ export interface LoginData {
   email: string;
   password: string;
 }
-
-const API_URL = 'http://localhost:8000/api';
 
 export const userService = {
   async createUser(data: CreateUserData) {

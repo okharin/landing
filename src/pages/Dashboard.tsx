@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Settings, BarChart2, FileText, Users, CheckSquare } from "lucide-react";
+import { LogOut, User, BarChart2, Users, CheckSquare } from "lucide-react";
 import { UserManagement } from '@/components/UserManagement';
 import { TaskList } from '@/components/TaskList';
 import Analytics from '@/components/Analytics';

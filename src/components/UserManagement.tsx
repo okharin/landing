@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Trash2, UserCog, Plus, Pencil } from "lucide-react";
+import { Trash2, Plus, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { API_URL } from '@/config/api';
 
 interface User {
   id: number;
@@ -40,7 +41,7 @@ export const UserManagement = () => {
       if (!userData) throw new Error('Пользователь не авторизован');
 
       const { id } = JSON.parse(userData);
-      const response = await fetch('/api/users', {
+      const response = await fetch(`${API_URL}/users`, {
         headers: {
           'user-id': id.toString(),
         },
@@ -67,7 +68,7 @@ export const UserManagement = () => {
       if (!userData) throw new Error('Пользователь не авторизован');
 
       const { id } = JSON.parse(userData);
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await fetch(`${API_URL}/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'user-id': id.toString(),
@@ -89,7 +90,7 @@ export const UserManagement = () => {
       if (!userData) throw new Error('Пользователь не авторизован');
 
       const { id } = JSON.parse(userData);
-      const response = await fetch('/api/users', {
+      const response = await fetch(`${API_URL}/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,7 +119,7 @@ export const UserManagement = () => {
       if (!userData) throw new Error('Пользователь не авторизован');
 
       const { id } = JSON.parse(userData);
-      const response = await fetch(`/api/users/${editingUser.id}`, {
+      const response = await fetch(`${API_URL}/users/${editingUser.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

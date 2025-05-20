@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
@@ -14,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { API_URL } from '@/config/api';
 
 interface Task {
   id: string;
@@ -45,7 +45,7 @@ export function TaskList() {
       }
 
       const { id } = JSON.parse(userData);
-      const response = await fetch('http://localhost:8000/api/tasks', {
+      const response = await fetch(`${API_URL}/tasks`, {
         headers: {
           'user-id': id.toString()
         }
@@ -115,7 +115,7 @@ export function TaskList() {
     });
 
     try {
-      const response = await fetch('http://localhost:8000/api/tasks', {
+      const response = await fetch(`${API_URL}/tasks`, {
         method: 'POST',
         headers: {
           'user-id': user.id.toString()
@@ -151,7 +151,7 @@ export function TaskList() {
 
     try {
       const { id } = JSON.parse(userData);
-      const response = await fetch(`http://localhost:8000/api/tasks/${taskId}`, {
+      const response = await fetch(`${API_URL}/tasks/${taskId}`, {
         method: 'DELETE',
         headers: {
           'user-id': id.toString()
@@ -177,7 +177,7 @@ export function TaskList() {
 
     try {
       const { id } = JSON.parse(userData);
-      const response = await fetch(`http://localhost:8000/api/files/${filename}`, {
+      const response = await fetch(`${API_URL}/files/${filename}`, {
         headers: {
           'user-id': id.toString()
         }
@@ -242,15 +242,6 @@ export function TaskList() {
       console.log('New expandedResults:', newState);
       return newState;
     });
-  };
-
-  const shouldShowResults = (task: Task) => {
-    console.log('Checking shouldShowResults for task:', {
-      id: task.id,
-      status: task.status,
-      isExpanded: expandedResults[task.id]
-    });
-    return task.status === 'COMPLETED' || expandedResults[task.id];
   };
 
   const filteredTasks = tasks.filter(task =>

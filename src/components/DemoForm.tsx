@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
+import { API_URL } from '@/config/api';
 
 interface DemoFormProps {
   isOpen: boolean;
@@ -25,7 +26,7 @@ const DemoForm = ({ isOpen, onClose }: DemoFormProps) => {
     setSubmitStatus('idle');
 
     try {
-      const response = await fetch('http://localhost:8000/api/send-demo-request', {
+      const response = await fetch(`${API_URL}/send-demo-request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

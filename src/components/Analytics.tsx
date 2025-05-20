@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_URL } from '@/config/api';
 import {
   Card,
   CardContent,
@@ -40,9 +41,8 @@ const Analytics: React.FC = () => {
     const fetchAnalytics = async () => {
       try {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
-        const isAdmin = user.role === 'ADMIN';
         
-        const response = await fetch('http://localhost:8000/api/analytics', {
+        const response = await fetch(`${API_URL}/analytics`, {
           headers: {
             'user-id': user.id || '',
           },
@@ -92,25 +92,25 @@ const Analytics: React.FC = () => {
 
   return (
     <Box p={3}>
-      <Grid container direction="column" spacing={3}>
+      <Grid container direction="column" spacing={3} component="div">
         {/* Первый ряд */}
-        <Grid item>
-          <Grid container spacing={3}>
+        <Grid item component="div">
+          <Grid container spacing={3} component="div">
             {/* Общая статистика */}
-            <Grid item xs={12}>
+            <Grid item xs={12} component="div">
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
                     Общая статистика
                   </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={6}>
+                  <Grid container spacing={2} component="div">
+                    <Grid item xs={6} component="div">
                       <Typography variant="subtitle2" color="textSecondary">
                         Всего задач
                       </Typography>
                       <Typography variant="h4">{data.totalTasks}</Typography>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid item xs={6} component="div">
                       <Typography variant="subtitle2" color="textSecondary">
                         Процент выполнения
                       </Typography>
@@ -124,14 +124,14 @@ const Analytics: React.FC = () => {
             </Grid>
 
             {/* Статусы задач */}
-            <Grid item xs={12}>
+            <Grid item xs={12} component="div">
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
                     Статусы задач
                   </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={6}>
+                  <Grid container spacing={2} component="div">
+                    <Grid item xs={6} component="div">
                       <Typography variant="subtitle2" color="textSecondary">
                         Выполнено
                       </Typography>
@@ -139,7 +139,7 @@ const Analytics: React.FC = () => {
                         {data.completedTasks}
                       </Typography>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid item xs={6} component="div">
                       <Typography variant="subtitle2" color="textSecondary">
                         В обработке
                       </Typography>
@@ -147,7 +147,7 @@ const Analytics: React.FC = () => {
                         {data.processingTasks}
                       </Typography>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid item xs={6} component="div">
                       <Typography variant="subtitle2" color="textSecondary">
                         Ожидает
                       </Typography>
@@ -155,7 +155,7 @@ const Analytics: React.FC = () => {
                         {data.pendingTasks}
                       </Typography>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid item xs={6} component="div">
                       <Typography variant="subtitle2" color="textSecondary">
                         Ошибки
                       </Typography>
@@ -171,7 +171,7 @@ const Analytics: React.FC = () => {
         </Grid>
 
         {/* Второй ряд */}
-        <Grid item>
+        <Grid item component="div">
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Задачи по дням

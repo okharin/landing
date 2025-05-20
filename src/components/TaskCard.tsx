@@ -19,6 +19,7 @@ import {
   Download as DownloadIcon,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
+import { API_URL } from '@/config/api';
 
 interface TaskCardProps {
   task: {
@@ -59,7 +60,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onDelete }) => {
 
   const handleDownload = async (filename: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/files/${filename}`, {
+      const response = await fetch(`${API_URL}/files/${filename}`, {
         headers: {
           'user-id': localStorage.getItem('userId') || '',
         },

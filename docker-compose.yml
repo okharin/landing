@@ -9,7 +9,7 @@ services:
       - "8080:8080"
     environment:
       - NODE_ENV=production
-      - VITE_API_URL=http://localhost:8080
+      - VITE_API_URL=http://duomind.ru:8000
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://localhost:8080"]
