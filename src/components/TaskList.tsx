@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { AddTaskModal } from './AddTaskModal';
 import { Input } from './ui/input';
+import { ConfirmDialog } from './ui/confirm-dialog';
 import {
   Select,
   SelectContent,
@@ -35,6 +36,8 @@ export function TaskList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [tasksPerPage, setTasksPerPage] = useState(5);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
 
   const fetchTasks = async () => {
     try {
@@ -45,7 +48,7 @@ export function TaskList() {
       }
 
       const { id } = JSON.parse(userData);
-      const response = await fetch(`${API_URL}/tasks`, {
+      const response = await fetch(`${API_URL}/tasks?user_id=${id}`, {
         headers: {
           'user-id': id.toString()
         }
@@ -90,11 +93,10 @@ export function TaskList() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleAddTask = async (title: string, file: File) => {
+  const handleAddTask = async (title: string, file: File, checkType: string) => {
     const userData = localStorage.getItem('user');
     if (!userData) {
-      setError('Необходима авторизация');
-      return;
+      throw new Error('Необходима авторизация');
     }
 
     const user = JSON.parse(userData);
@@ -104,15 +106,7 @@ export function TaskList() {
     formData.append('userName', user.name);
     formData.append('userEmail', user.email);
     formData.append('userCompany', user.company || '');
-
-    console.log('Отправляем запрос на создание задачи:', {
-      title,
-      fileName: file.name,
-      userId: user.id,
-      userName: user.name,
-      userEmail: user.email,
-      userCompany: user.company
-    });
+    formData.append('checkType', checkType);
 
     try {
       const response = await fetch(`${API_URL}/tasks`, {
@@ -126,7 +120,24 @@ export function TaskList() {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Ошибка при создании задачи:', errorData);
-        throw new Error(errorData.error || 'Ошибка при создании задачи');
+        
+        // Используем сообщение из поля detail, если оно есть
+        if (errorData.detail) {
+          throw new Error(errorData.detail);
+        }
+        
+        // Если detail нет, используем error или стандартные сообщения
+        if (errorData.error) {
+          throw new Error(errorData.error);
+        } else if (response.status === 413) {
+          throw new Error('Размер файла превышает допустимый предел (100 МБ)');
+        } else if (response.status === 401) {
+          throw new Error('Необходима авторизация. Пожалуйста, войдите в систему');
+        } else if (response.status === 415) {
+          throw new Error('Неподдерживаемый формат файла. Пожалуйста, используйте Excel (.xlsx)');
+        } else {
+          throw new Error('Произошла ошибка при создании задачи');
+        }
       }
 
       const task = await response.json();
@@ -138,10 +149,13 @@ export function TaskList() {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Вы уверены, что хотите удалить эту задачу?')) {
-      return;
-    }
+  const handleDeleteClick = (taskId: string) => {
+    setTaskToDelete(taskId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!taskToDelete) return;
 
     const userData = localStorage.getItem('user');
     if (!userData) {
@@ -151,7 +165,7 @@ export function TaskList() {
 
     try {
       const { id } = JSON.parse(userData);
-      const response = await fetch(`${API_URL}/tasks/${taskId}`, {
+      const response = await fetch(`${API_URL}/tasks/${taskToDelete}`, {
         method: 'DELETE',
         headers: {
           'user-id': id.toString()
@@ -165,6 +179,8 @@ export function TaskList() {
       await fetchTasks();
     } catch (err) {
       setError('Ошибка при удалении задачи');
+    } finally {
+      setTaskToDelete(null);
     }
   };
 
@@ -345,7 +361,7 @@ export function TaskList() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDeleteTask(task.id)}
+                      onClick={() => handleDeleteClick(task.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -468,6 +484,14 @@ export function TaskList() {
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Удаление задачи"
+        description="Вы уверены, что хотите удалить эту задачу?"
+      />
     </div>
   );
 } 

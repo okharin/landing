@@ -10,10 +10,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog';
-import { Plus } from 'lucide-react';
+import { Plus, AlertCircle } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 interface AddTaskModalProps {
-  onAddTask: (title: string, file: File) => Promise<void>;
+  onAddTask: (title: string, file: File, checkType: string) => Promise<void>;
 }
 
 export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
@@ -21,6 +28,8 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkType, setCheckType] = useState('none');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -43,32 +52,54 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setIsSubmitting(true);
+
     if (!title.trim()) {
       setError('Введите название задачи');
+      setIsSubmitting(false);
       return;
     }
     if (!selectedFile) {
       setError('Выберите файл Excel');
+      setIsSubmitting(false);
       return;
     }
 
     try {
-      await onAddTask(title, selectedFile);
+      await onAddTask(title, selectedFile, checkType);
       setTitle('');
       setSelectedFile(null);
       setError('');
+      setCheckType('none');
       setIsOpen(false);
     } catch (err) {
       if (err instanceof Error) {
         if (err.message.includes('уже существует')) {
           setError('Задача с таким названием уже существует');
+        } else if (err.message.includes('формат')) {
+          setError('Неподдерживаемый формат файла. Пожалуйста, используйте Excel (.xlsx)');
+        } else if (err.message.includes('размер')) {
+          setError('Размер файла превышает допустимый предел (100 МБ)');
+        } else if (err.message.includes('авторизация')) {
+          setError('Необходима авторизация. Пожалуйста, войдите в систему');
         } else {
-          setError(err.message || 'Ошибка при создании задачи');
+          setError(err.message || 'Произошла ошибка при создании задачи');
         }
       } else {
-        setError('Ошибка при создании задачи');
+        setError('Произошла неизвестная ошибка при создании задачи');
       }
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleClose = () => {
+    setIsOpen(false);
+    setTitle('');
+    setSelectedFile(null);
+    setError('');
+    setCheckType('none');
   };
 
   return (
@@ -91,6 +122,7 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Введите название задачи"
+              disabled={isSubmitting}
             />
           </div>
           <div className="space-y-2">
@@ -100,21 +132,45 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
               type="file"
               accept=".xlsx"
               onChange={handleFileChange}
+              disabled={isSubmitting}
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="checkType">Проверка результата</Label>
+            <Select
+              value={checkType}
+              onValueChange={setCheckType}
+              disabled={isSubmitting}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Выберите тип проверки" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Без проверки</SelectItem>
+                <SelectItem value="selective">Выборочная проверка</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           {error && (
-            <p className="text-sm text-red-500">{error}</p>
+            <div className="flex items-center gap-2 p-3 text-sm text-red-500 bg-red-50 rounded-md">
+              <AlertCircle className="h-4 w-4" />
+              <span>{error}</span>
+            </div>
           )}
           <div className="flex justify-end space-x-2">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsOpen(false)}
+              onClick={handleClose}
+              disabled={isSubmitting}
             >
               Отмена
             </Button>
-            <Button type="submit">
-              Создать
+            <Button 
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Создание...' : 'Создать'}
             </Button>
           </div>
         </form>
