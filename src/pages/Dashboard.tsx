@@ -5,6 +5,7 @@ import { LogOut, User, BarChart2, Users, CheckSquare } from "lucide-react";
 import { UserManagement } from '@/components/UserManagement';
 import { TaskList } from '@/components/TaskList';
 import Analytics from '@/components/Analytics';
+import { API_URL } from '@/config/api';
 
 interface UserData {
   id: number;
@@ -12,6 +13,8 @@ interface UserData {
   name: string;
   company: string | null;
   role: 'USER' | 'ADMIN';
+  ai_request_limit: number;
+  ai_request_used: number;
 }
 
 const Dashboard = () => {
@@ -19,14 +22,42 @@ const Dashboard = () => {
   const [user, setUser] = useState<UserData | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
 
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (!userData) {
-      navigate('/');
-      return;
+  const fetchUserData = async () => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) {
+        navigate('/');
+        return;
+      }
+      const { id } = JSON.parse(userData);
+      
+      const response = await fetch(`${API_URL}/user/${id}`, {
+        headers: {
+          'user-id': id.toString(),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Ошибка при загрузке данных пользователя');
+      }
+
+      const updatedUserData = await response.json();
+      localStorage.setItem('user', JSON.stringify(updatedUserData));
+      setUser(updatedUserData);
+    } catch (err) {
+      console.error('Ошибка при обновлении данных пользователя:', err);
     }
-    setUser(JSON.parse(userData));
+  };
+
+  useEffect(() => {
+    fetchUserData();
   }, [navigate]);
+
+  useEffect(() => {
+    if (activeTab === 'profile') {
+      fetchUserData();
+    }
+  }, [activeTab]);
 
   const handleLogout = () => {
     const returnPath = localStorage.getItem('returnPath') || '/';
@@ -58,23 +89,52 @@ const Dashboard = () => {
             <h2 className="text-2xl font-bold font-montserrat mb-6">
               Профиль пользователя
             </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Имя</label>
-                <p className="mt-1 text-lg">{user.name}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Информация о пользователе */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900">Информация о пользователе</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Имя</label>
+                  <p className="mt-1 text-lg">{user.name}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <p className="mt-1 text-lg">{user.email}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Компания</label>
+                  <p className="mt-1 text-lg">{user.company || '-'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Роль</label>
+                  <p className="mt-1 text-lg">{user.role === 'ADMIN' ? 'Администратор' : 'Пользователь'}</p>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
-                <p className="mt-1 text-lg">{user.email}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Компания</label>
-                <p className="mt-1 text-lg">{user.company || '-'}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Роль</label>
-                <p className="mt-1 text-lg">{user.role === 'ADMIN' ? 'Администратор' : 'Пользователь'}</p>
-              </div>
+
+              {/* Лимит запросов к ИИ */}
+              {user.role === 'USER' && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-900">Лимит запросов к ИИ</h3>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-lg font-medium">
+                          {user.ai_request_used} / {user.ai_request_limit}
+                        </p>
+                        <div className="w-48 bg-gray-200 rounded-full h-2.5">
+                          <div 
+                            className="bg-duomind-purple h-2.5 rounded-full" 
+                            style={{ width: `${(user.ai_request_used / user.ai_request_limit) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {user.ai_request_limit - user.ai_request_used} запросов осталось
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
