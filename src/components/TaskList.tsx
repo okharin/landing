@@ -28,6 +28,7 @@ interface Task {
   updatedAt: string;
   result?: string;
   checkType: string;
+  error?: string;
 }
 
 export function TaskList() {
@@ -387,6 +388,12 @@ export function TaskList() {
                   <Clock className="h-4 w-4" />
                   <span>{getStatusText(task.status)}</span>
                 </div>
+
+                {task.error && (
+                  <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
+                    {task.error}
+                  </div>
+                )}
 
                 {task.status === 'PROCESSING' && (
                   <div className="space-y-1">
