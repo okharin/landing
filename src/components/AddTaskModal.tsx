@@ -35,9 +35,9 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
     const file = e.target.files?.[0];
     if (file) {
       if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
-        const maxSize = 100 * 1024 * 1024; // 100 МБ в байтах
+        const maxSize = 10 * 1024 * 1024; // 10 МБ в байтах
         if (file.size > maxSize) {
-          setError('Размер файла не должен превышать 100 МБ');
+          setError('Размер файла не должен превышать 10 МБ');
           setSelectedFile(null);
           return;
         }

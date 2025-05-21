@@ -29,8 +29,10 @@ const Dashboard = () => {
   }, [navigate]);
 
   const handleLogout = () => {
+    const returnPath = localStorage.getItem('returnPath') || '/';
     localStorage.removeItem('user');
-    navigate('/');
+    localStorage.removeItem('returnPath');
+    navigate(returnPath);
   };
 
   if (!user) return null;

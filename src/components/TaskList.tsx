@@ -26,6 +26,8 @@ interface Task {
   userId: string;
   createdAt: string;
   updatedAt: string;
+  result?: string;
+  checkType: string;
 }
 
 export function TaskList() {
@@ -235,15 +237,28 @@ export function TaskList() {
   const getStatusText = (status: Task['status']) => {
     switch (status) {
       case 'PENDING':
-        return 'Ожидает';
+        return 'Ожидает обработки';
       case 'PROCESSING':
         return 'В обработке';
       case 'COMPLETED':
-        return 'Завершено';
+        return 'Завершена';
       case 'FAILED':
         return 'Ошибка';
       default:
         return status;
+    }
+  };
+
+  const getCheckTypeText = (checkType: string | null) => {
+    switch (checkType) {
+      case null:
+        return 'Без проверки';
+      case 'none':
+        return 'Без проверки';
+      case 'selective':
+        return 'Выборочная проверка';
+      default:
+        return checkType;
     }
   };
 
@@ -433,6 +448,25 @@ export function TaskList() {
                         })}
                       </div>
                     </div>
+                  </div>
+                )}
+
+                <div className="flex items-center space-x-2 text-sm text-gray-500">
+                  <span>Проверка:</span>
+                  <span>
+                    {getCheckTypeText(task.checkType)}
+                  </span>
+                </div>
+
+                {task.status === 'COMPLETED' && task.result && (
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(task.result, '_blank')}
+                    >
+                      Скачать результат
+                    </Button>
                   </div>
                 )}
               </div>

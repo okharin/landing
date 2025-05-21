@@ -1,8 +1,8 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "./ui/button";
 import { X } from "lucide-react";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { userService } from '../services/userService';
 
 interface AuthFormProps {
@@ -12,6 +12,7 @@ interface AuthFormProps {
 
 const AuthForm = ({ isOpen, onClose }: AuthFormProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -19,6 +20,14 @@ const AuthForm = ({ isOpen, onClose }: AuthFormProps) => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      // Сохраняем текущий путь перед открытием формы логина
+      const currentPath = location.pathname;
+      localStorage.setItem('returnPath', currentPath);
+    }
+  }, [isOpen, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
