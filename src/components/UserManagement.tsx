@@ -11,6 +11,7 @@ interface User {
   name: string;
   company: string | null;
   role: 'USER' | 'ADMIN';
+  ai_request_limit: number;
 }
 
 interface UserFormData {
@@ -19,6 +20,7 @@ interface UserFormData {
   company: string;
   password: string;
   role: 'USER' | 'ADMIN';
+  ai_request_limit: number;
 }
 
 export const UserManagement = () => {
@@ -27,12 +29,14 @@ export const UserManagement = () => {
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState<UserFormData>({
     email: '',
     name: '',
     company: '',
     password: '',
-    role: 'USER'
+    role: 'USER',
+    ai_request_limit: 0
   });
 
   const fetchUsers = async () => {
@@ -61,8 +65,6 @@ export const UserManagement = () => {
   }, []);
 
   const handleDeleteUser = async (userId: number) => {
-    if (!confirm('Вы уверены, что хотите удалить этого пользователя?')) return;
-
     try {
       const userData = localStorage.getItem('user');
       if (!userData) throw new Error('Пользователь не авторизован');
@@ -78,6 +80,7 @@ export const UserManagement = () => {
       if (!response.ok) throw new Error('Ошибка при удалении пользователя');
       
       setUsers(users.filter(user => user.id !== userId));
+      setDeletingUser(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Произошла ошибка');
     }
@@ -104,7 +107,7 @@ export const UserManagement = () => {
       const newUser = await response.json();
       setUsers([...users, newUser]);
       setIsAddModalOpen(false);
-      setFormData({ email: '', name: '', company: '', password: '', role: 'USER' });
+      setFormData({ email: '', name: '', company: '', password: '', role: 'USER', ai_request_limit: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Произошла ошибка');
     }
@@ -135,7 +138,7 @@ export const UserManagement = () => {
         user.id === editingUser.id ? updatedUser : user
       ));
       setEditingUser(null);
-      setFormData({ email: '', name: '', company: '', password: '', role: 'USER' });
+      setFormData({ email: '', name: '', company: '', password: '', role: 'USER', ai_request_limit: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Произошла ошибка');
     }
@@ -156,7 +159,8 @@ export const UserManagement = () => {
       name: user.name,
       company: user.company || '',
       password: '',
-      role: user.role
+      role: user.role,
+      ai_request_limit: user.ai_request_limit
     });
   };
 
@@ -170,7 +174,17 @@ export const UserManagement = () => {
           Управление пользователями
         </h2>
         <Button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => {
+            setFormData({
+              email: '',
+              name: '',
+              company: '',
+              password: '',
+              role: 'USER',
+              ai_request_limit: 0
+            });
+            setIsAddModalOpen(true);
+          }}
           className="flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
@@ -186,6 +200,7 @@ export const UserManagement = () => {
               <th className="text-left py-3 px-4">Email</th>
               <th className="text-left py-3 px-4">Компания</th>
               <th className="text-left py-3 px-4">Роль</th>
+              <th className="text-left py-3 px-4">Лимит запросов к ИИ</th>
               <th className="text-left py-3 px-4">Действия</th>
             </tr>
           </thead>
@@ -204,6 +219,7 @@ export const UserManagement = () => {
                     {user.role === 'ADMIN' ? 'Администратор' : 'Пользователь'}
                   </span>
                 </td>
+                <td className="py-3 px-4">{user.ai_request_limit}</td>
                 <td className="py-3 px-4">
                   <div className="flex space-x-2">
                     <Button
@@ -217,7 +233,7 @@ export const UserManagement = () => {
                       variant="outline"
                       size="sm"
                       className="text-red-600 hover:text-red-700"
-                      onClick={() => handleDeleteUser(user.id)}
+                      onClick={() => setDeletingUser(user)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -290,6 +306,19 @@ export const UserManagement = () => {
                   <option value="ADMIN">Администратор</option>
                 </select>
               </div>
+              {formData.role === 'USER' && (
+                <div>
+                  <Label htmlFor="ai_request_limit">Лимит запросов к ИИ</Label>
+                  <Input
+                    id="ai_request_limit"
+                    name="ai_request_limit"
+                    type="number"
+                    value={formData.ai_request_limit}
+                    onChange={handleFormChange}
+                    required
+                  />
+                </div>
+              )}
               <div className="flex justify-end space-x-2">
                 <Button
                   type="button"
@@ -365,6 +394,19 @@ export const UserManagement = () => {
                   <option value="ADMIN">Администратор</option>
                 </select>
               </div>
+              {formData.role === 'USER' && (
+                <div>
+                  <Label htmlFor="edit-ai_request_limit">Лимит запросов к ИИ</Label>
+                  <Input
+                    id="edit-ai_request_limit"
+                    name="ai_request_limit"
+                    type="number"
+                    value={formData.ai_request_limit}
+                    onChange={handleFormChange}
+                    required
+                  />
+                </div>
+              )}
               <div className="flex justify-end space-x-2">
                 <Button
                   type="button"
@@ -376,6 +418,32 @@ export const UserManagement = () => {
                 <Button type="submit">Сохранить</Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно подтверждения удаления */}
+      {deletingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold mb-4">Подтверждение удаления</h3>
+            <p className="mb-6">
+              Вы уверены, что хотите удалить пользователя {deletingUser.name}?
+            </p>
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setDeletingUser(null)}
+              >
+                Отмена
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => handleDeleteUser(deletingUser.id)}
+              >
+                Удалить
+              </Button>
+            </div>
           </div>
         </div>
       )}

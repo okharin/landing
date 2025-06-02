@@ -1,9 +1,21 @@
 import { API_URL } from '@/config/api';
 
+export interface User {
+  id: number;
+  email: string;
+  name: string;
+  company: string | null;
+  role: 'USER' | 'ADMIN';
+  aiRequestLimit: number;
+  aiRequestsUsed: number;
+}
+
 export interface CreateUserData {
   email: string;
   password: string;
   name: string;
+  company: string;
+  role: 'USER' | 'ADMIN';
 }
 
 export interface LoginData {
