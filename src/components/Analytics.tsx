@@ -59,6 +59,12 @@ const Analytics: React.FC = () => {
         }
 
         const analyticsData = await response.json();
+        // Сортируем данные по дате по возрастанию
+        if (analyticsData.tasksByDay) {
+          analyticsData.tasksByDay.sort((a: { date: string }, b: { date: string }) => 
+            new Date(a.date).getTime() - new Date(b.date).getTime()
+          );
+        }
         setData(analyticsData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Произошла ошибка');
