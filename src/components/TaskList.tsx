@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { API_URL } from '@/config/api';
+import { useToast } from './ui/use-toast';
 
 interface Task {
   id: string;
@@ -41,6 +42,7 @@ export function TaskList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  const { addToast } = useToast();
 
   const fetchTasks = async () => {
     try {
@@ -96,59 +98,52 @@ export function TaskList() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleAddTask = async (title: string, file: File, checkType: string) => {
-    const userData = localStorage.getItem('user');
-    if (!userData) {
-      throw new Error('Необходима авторизация');
-    }
-
-    const user = JSON.parse(userData);
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('file', file);
-    formData.append('userName', user.name);
-    formData.append('userEmail', user.email);
-    formData.append('userCompany', user.company || '');
-    formData.append('checkType', checkType);
-
+  const handleAddTask = async (
+    title: string,
+    file: File | null,
+    checkType: string,
+    dataSource: string,
+    productCodes?: string[],
+    useAiKnowledge?: boolean
+  ) => {
     try {
-      const response = await fetch(`${API_URL}/tasks`, {
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('checkType', checkType);
+      formData.append('useKnowledge', useAiKnowledge ? 'use' : 'no');
+      formData.append('userCompany', userData.company || '');
+      formData.append('userEmail', userData.email || '');
+      formData.append('userName', userData.name || '');
+      
+      if (dataSource === 'excel' && file) {
+        formData.append('file', file);
+      } else if (dataSource === 'mvideo' && productCodes) {
+        formData.append('eans', productCodes.join(','));
+      }
+
+      const response = await fetch('/api/tasks', {
         method: 'POST',
-        headers: {
-          'user-id': user.id.toString()
-        },
-        body: formData
+        body: formData,
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Ошибка при создании задачи:', errorData);
-        
-        // Используем сообщение из поля detail, если оно есть
-        if (errorData.detail) {
-          throw new Error(errorData.detail);
-        }
-        
-        // Если detail нет, используем error или стандартные сообщения
-        if (errorData.error) {
-          throw new Error(errorData.error);
-        } else if (response.status === 413) {
-          throw new Error('Размер файла превышает допустимый предел (100 МБ)');
-        } else if (response.status === 401) {
-          throw new Error('Необходима авторизация. Пожалуйста, войдите в систему');
-        } else if (response.status === 415) {
-          throw new Error('Неподдерживаемый формат файла. Пожалуйста, используйте Excel (.xlsx)');
-        } else {
-          throw new Error('Произошла ошибка при создании задачи');
-        }
+        const error = await response.json();
+        throw new Error(error.detail || 'Ошибка при создании задачи');
       }
 
-      const task = await response.json();
-      console.log('Задача успешно создана:', task);
-      await fetchTasks();
-    } catch (err) {
-      console.error('Ошибка при создании задачи:', err);
-      throw err;
+      const newTask = await response.json();
+      setTasks(prevTasks => [...prevTasks, newTask]);
+      addToast({
+        id: Date.now().toString(),
+        message: "Новая задача успешно добавлена",
+        title: "Задача создана",
+        description: "Задача была успешно создана и добавлена в список"
+      });
+    } catch (error) {
+      console.error('Error adding task:', error);
+      throw error;
     }
   };
 
@@ -331,200 +326,204 @@ export function TaskList() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск по названию задачи..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-        <div className="ml-4">
-          <AddTaskModal onAddTask={handleAddTask} />
-        </div>
+    <div className="container mx-auto py-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Задачи</h1>
+        <AddTaskModal onAddTask={handleAddTask} />
       </div>
 
-      {error && (
-        <div className="text-red-500 text-sm">{error}</div>
-      )}
-
-      {loading ? (
-        <div className="text-center py-4">Загрузка...</div>
-      ) : filteredTasks.length === 0 ? (
-        <div className="text-center py-4">
-          {searchQuery ? 'Задачи не найдены' : 'Нет задач'}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Поиск по названию задачи..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+            />
+          </div>
         </div>
-      ) : (
-        <>
-          <div className="space-y-4">
-            {getCurrentTasks().map((task) => (
-              <div
-                key={task.id}
-                className="p-4 border rounded-lg space-y-2"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className={`w-2 h-2 rounded-full ${getStatusColor(task.status)}`} />
-                    <h3 className="font-medium">{task.title}</h3>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-500">
-                      {formatDate(task.createdAt)}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteClick(task.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
 
-                <div className="flex items-center space-x-2 text-sm text-gray-500">
-                  <Clock className="h-4 w-4" />
-                  <span>{getStatusText(task.status)}</span>
-                </div>
+        {error && (
+          <div className="text-red-500 text-sm">{error}</div>
+        )}
 
-                {task.error && (
-                  <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
-                    {task.error}
-                  </div>
-                )}
-
-                {task.status === 'PROCESSING' && (
-                  <div className="space-y-1">
-                    <Progress 
-                      value={task.progress} 
-                      className="h-2 bg-blue-100"
-                    />
-                    <p className="text-sm text-gray-500">
-                      Прогресс: {task.progress}%
-                    </p>
-                  </div>
-                )}
-
-                {task.outputFiles?.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">
-                        Результаты ({task.outputFiles.length} {task.outputFiles.length === 1 ? 'файл' : 'файлов'}):
-                      </p>
+        {loading ? (
+          <div className="text-center py-4">Загрузка...</div>
+        ) : filteredTasks.length === 0 ? (
+          <div className="text-center py-4">
+            {searchQuery ? 'Задачи не найдены' : 'Нет задач'}
+          </div>
+        ) : (
+          <>
+            <div className="space-y-4">
+              {getCurrentTasks().map((task) => (
+                <div
+                  key={task.id}
+                  className="p-4 border rounded-lg space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className={`w-2 h-2 rounded-full ${getStatusColor(task.status)}`} />
+                      <h3 className="font-medium">{task.title}</h3>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-500">
+                        {formatDate(task.createdAt)}
+                      </span>
                       <Button
                         variant="ghost"
-                        size="sm"
-                        onClick={() => toggleResults(task.id)}
-                        className="flex items-center space-x-1"
+                        size="icon"
+                        onClick={() => handleDeleteClick(task.id)}
                       >
-                        {expandedResults[task.id] ? (
-                          <>
-                            <span>Скрыть</span>
-                            <ChevronUp className="h-4 w-4" />
-                          </>
-                        ) : (
-                          <>
-                            <span>Показать</span>
-                            <ChevronDown className="h-4 w-4" />
-                          </>
-                        )}
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className={`transition-all duration-200 ${expandedResults[task.id] ? 'block' : 'hidden'}`}>
-                      <div className="grid grid-cols-2 gap-4">
-                        {task.outputFiles.map((file, index) => {
-                          const formattedName = formatFileName(file);
-                          // Определяем, к какому столбцу относится файл
-                          const isPattern = file.startsWith('pattern_');
-                          const isCheck = file.startsWith('check_');
-                          
-                          return (
-                            <div
-                              key={index}
-                              className={`flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 cursor-pointer ${
-                                isPattern ? 'col-start-1' : isCheck ? 'col-start-2' : ''
-                              }`}
-                              onClick={() => handleDownloadFile(file)}
-                            >
-                              <Download className="h-4 w-4" />
-                              <span>{formattedName}</span>
-                            </div>
-                          );
-                        })}
+                  </div>
+
+                  <div className="flex items-center space-x-2 text-sm text-gray-500">
+                    <Clock className="h-4 w-4" />
+                    <span>{getStatusText(task.status)}</span>
+                  </div>
+
+                  {task.error && (
+                    <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
+                      {task.error}
+                    </div>
+                  )}
+
+                  {task.status === 'PROCESSING' && (
+                    <div className="space-y-1">
+                      <Progress 
+                        value={task.progress} 
+                        className="h-2 bg-blue-100"
+                      />
+                      <p className="text-sm text-gray-500">
+                        Прогресс: {task.progress}%
+                      </p>
+                    </div>
+                  )}
+
+                  {task.outputFiles?.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">
+                          Результаты ({task.outputFiles.length} {task.outputFiles.length === 1 ? 'файл' : 'файлов'}):
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleResults(task.id)}
+                          className="flex items-center space-x-1"
+                        >
+                          {expandedResults[task.id] ? (
+                            <>
+                              <span>Скрыть</span>
+                              <ChevronUp className="h-4 w-4" />
+                            </>
+                          ) : (
+                            <>
+                              <span>Показать</span>
+                              <ChevronDown className="h-4 w-4" />
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <div className={`transition-all duration-200 ${expandedResults[task.id] ? 'block' : 'hidden'}`}>
+                        <div className="grid grid-cols-2 gap-4">
+                          {task.outputFiles.map((file, index) => {
+                            const formattedName = formatFileName(file);
+                            // Определяем, к какому столбцу относится файл
+                            const isPattern = file.startsWith('pattern_');
+                            const isCheck = file.startsWith('check_');
+                            
+                            return (
+                              <div
+                                key={index}
+                                className={`flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 cursor-pointer ${
+                                  isPattern ? 'col-start-1' : isCheck ? 'col-start-2' : ''
+                                }`}
+                                onClick={() => handleDownloadFile(file)}
+                              >
+                                <Download className="h-4 w-4" />
+                                <span>{formattedName}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="flex items-center space-x-2 text-sm text-gray-500">
-                  <span>Проверка:</span>
-                  <span>
-                    {getCheckTypeText(task.checkType)}
-                  </span>
+                  <div className="flex items-center space-x-2 text-sm text-gray-500">
+                    <span>Проверка:</span>
+                    <span>
+                      {getCheckTypeText(task.checkType)}
+                    </span>
+                  </div>
+
+                  {task.status === 'COMPLETED' && task.result && (
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(task.result, '_blank')}
+                      >
+                        Скачать результат
+                      </Button>
+                    </div>
+                  )}
                 </div>
+              ))}
+            </div>
 
-                {task.status === 'COMPLETED' && task.result && (
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(task.result, '_blank')}
-                    >
-                      Скачать результат
-                    </Button>
-                  </div>
-                )}
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-muted-foreground">Задач на странице:</span>
+                <Select
+                  value={tasksPerPage.toString()}
+                  onValueChange={(value) => {
+                    setTasksPerPage(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[70px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            ))}
-          </div>
 
-          <div className="flex items-center justify-between mt-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-muted-foreground">Задач на странице:</span>
-              <Select
-                value={tasksPerPage.toString()}
-                onValueChange={(value) => {
-                  setTasksPerPage(Number(value));
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="w-[70px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5</SelectItem>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm">
+                  Страница {currentPage} из {getTotalPages()}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, getTotalPages()))}
+                  disabled={currentPage === getTotalPages()}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm">
-                Страница {currentPage} из {getTotalPages()}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, getTotalPages()))}
-                disabled={currentPage === getTotalPages()}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </>
-      )}
+          </>
+        )}
+      </div>
 
       <ConfirmDialog
         isOpen={deleteDialogOpen}
