@@ -22,7 +22,7 @@ interface Task {
   title: string;
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   progress: number;
-  inputFile: string;
+  inputFiles: string;
   outputFiles: string[];
   userId: string;
   createdAt: string;
@@ -30,6 +30,8 @@ interface Task {
   result?: string;
   checkType: string;
   error?: string;
+  eans?: string;
+  useKnowledge: boolean;
 }
 
 export function TaskList() {
@@ -258,6 +260,16 @@ export function TaskList() {
     }
   };
 
+  const getDataSourceText = (task: Task) => {
+    if (task.eans && task.eans.length > 0) {
+      return 'М.Видео';
+    }
+    if (task.inputFiles && task.inputFiles.length > 0) {
+      return 'Excel-файл';
+    }
+    return 'Не указан';
+  };
+
   const toggleResults = (taskId: string) => {
     console.log('Toggle results for task:', taskId);
     console.log('Current expandedResults:', expandedResults);
@@ -456,11 +468,19 @@ export function TaskList() {
                     </div>
                   )}
 
-                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <span>Проверка:</span>
-                    <span>
-                      {getCheckTypeText(task.checkType)}
-                    </span>
+                  <div className="flex flex-col space-y-2 text-sm text-gray-500">
+                    <div className="flex items-center space-x-2">
+                      <span>Проверка:</span>
+                      <span>
+                        {getCheckTypeText(task.checkType)}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span>Источник данных:</span>
+                      <span>
+                        {getDataSourceText(task)}
+                      </span>
+                    </div>
                   </div>
 
                   {task.status === 'COMPLETED' && task.result && (
