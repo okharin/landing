@@ -339,10 +339,6 @@ export function TaskList() {
 
   return (
     <div className="container mx-auto py-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Задачи</h1>
-        <AddTaskModal onAddTask={handleAddTask} />
-      </div>
 
       <div className="space-y-4">
         <div className="flex justify-between items-center">
@@ -355,6 +351,7 @@ export function TaskList() {
               className="pl-8"
             />
           </div>
+          <AddTaskModal onAddTask={handleAddTask} />
         </div>
 
         {error && (
