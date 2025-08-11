@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { LogOut, User, BarChart2, Users, CheckSquare } from "lucide-react";
+import { LogOut, User, BarChart2, Users, CheckSquare, FileText } from "lucide-react";
 import { UserManagement } from '@/components/UserManagement';
 import { TaskList } from '@/components/TaskList';
 import Analytics from '@/components/Analytics';
+import { TemplateManagement } from '@/components/TemplateManagement';
 import { API_URL } from '@/config/api';
 
 interface UserData {
@@ -74,6 +75,8 @@ const Dashboard = () => {
     switch (activeTab) {
       case 'users':
         return isAdmin ? <UserManagement /> : null;
+      case 'templates':
+        return isAdmin ? <TemplateManagement /> : null;
       case 'tasks':
         return (
           <div className="bg-white rounded-xl shadow-sm p-6">
@@ -192,33 +195,44 @@ const Dashboard = () => {
                 </button>
                 {!isAdmin && (
                   <button
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md w-full text-left ${
+                    onClick={() => setActiveTab('tasks')}
+                    className={`w-full flex items-center space-x-2 text-gray-700 hover:text-duomind-purple p-2 rounded-lg hover:bg-gray-50 ${
                       activeTab === 'tasks' ? 'bg-gray-50 text-duomind-purple' : ''
                     }`}
-                    onClick={() => setActiveTab('tasks')}
                   >
                     <CheckSquare className="w-5 h-5" />
                     <span>Задачи</span>
                   </button>
                 )}
                 <button
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-md w-full text-left ${
+                  onClick={() => setActiveTab('analytics')}
+                  className={`w-full flex items-center space-x-2 text-gray-700 hover:text-duomind-purple p-2 rounded-lg hover:bg-gray-50 ${
                     activeTab === 'analytics' ? 'bg-gray-50 text-duomind-purple' : ''
                   }`}
-                  onClick={() => setActiveTab('analytics')}
                 >
                   <BarChart2 className="w-5 h-5" />
                   <span>Аналитика</span>
                 </button>
                 {isAdmin && (
                   <button
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md w-full text-left ${
+                    onClick={() => setActiveTab('users')}
+                    className={`w-full flex items-center space-x-2 text-gray-700 hover:text-duomind-purple p-2 rounded-lg hover:bg-gray-50 ${
                       activeTab === 'users' ? 'bg-gray-50 text-duomind-purple' : ''
                     }`}
-                    onClick={() => setActiveTab('users')}
                   >
                     <Users className="w-5 h-5" />
                     <span>Пользователи</span>
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={() => setActiveTab('templates')}
+                    className={`w-full flex items-center space-x-2 text-gray-700 hover:text-duomind-purple p-2 rounded-lg hover:bg-gray-50 ${
+                      activeTab === 'templates' ? 'bg-gray-50 text-duomind-purple' : ''
+                    }`}
+                  >
+                    <FileText className="w-5 h-5" />
+                    <span>Шаблоны</span>
                   </button>
                 )}
               </nav>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -16,16 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { Plus, AlertCircle, X } from 'lucide-react';
+import { Plus, AlertCircle } from 'lucide-react';
 import { Switch } from "./ui/switch";
 
-interface ProductCode {
-  ean: string;
-  name: string;
-}
+
 
 interface AddTaskModalProps {
-  onAddTask: (title: string, file: File | null, checkType: string, dataSource: string, productCodes?: string[], useAiKnowledge?: boolean) => Promise<void>;
+  onAddTask: (title: string, file: File | null, checkType: string, dataSource: string, productCodes?: string[], useAiKnowledge?: boolean, templateId?: number, customTemplateFile?: File | null) => Promise<void>;
 }
 
 export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
@@ -35,78 +32,32 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkType, setCheckType] = useState('none');
-  const [dataSource, setDataSource] = useState('mvideo');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [allProducts, setAllProducts] = useState<string[]>([]);
-  const [selectedProducts, setSelectedProducts] = useState<ProductCode[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const inputContainerRef = useRef<HTMLDivElement>(null);
+
   const [useAiKnowledge, setUseAiKnowledge] = useState(true);
+  const [templates, setTemplates] = useState<Array<{id: number, name: string}>>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<number | undefined>(undefined);
+  const [customTemplateFile, setCustomTemplateFile] = useState<File | null>(null);
+  const [showCustomTemplate, setShowCustomTemplate] = useState(false);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoading(true);
+    const fetchTemplates = async () => {
       try {
-        console.log('Начинаем загрузку списка товаров...');
-        const response = await fetch('/api/eans');
-        console.log('Статус ответа:', response.status);
-        console.log('Заголовки ответа:', Object.fromEntries(response.headers.entries()));
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        const response = await fetch('/api/templates');
+        if (response.ok) {
+          const data = await response.json();
+          setTemplates(data);
         }
-        
-        const data = await response.json();
-        console.log('Получены данные от сервера:', data);
-        
-        if (!Array.isArray(data)) {
-          console.error('Ошибка: данные не являются массивом:', data);
-          setAllProducts([]);
-          return;
-        }
-        const validProducts = data.filter((ean: any) => typeof ean === 'string');
-        console.log('Количество валидных EAN:', validProducts.length);
-        if (validProducts.length > 0) {
-          console.log('Примеры EAN:', validProducts.slice(0, 3));
-        }
-        setAllProducts(validProducts);
       } catch (error) {
-        console.error('Ошибка при загрузке списка товаров:', error);
-        setAllProducts([]);
-      } finally {
-        setIsLoading(false);
+        console.error('Ошибка при загрузке шаблонов:', error);
       }
     };
 
     if (isOpen) {
-      fetchProducts();
+      fetchTemplates();
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (inputContainerRef.current && !inputContainerRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  const filteredProducts = React.useMemo(() => {
-    if (!searchQuery) return [];
-    return allProducts
-      .filter((ean) => ean.includes(searchQuery))
-      .slice(0, 5);
-  }, [allProducts, searchQuery]);
-
-  const handleRemoveProduct = (eanToRemove: string) => {
-    setSelectedProducts(selectedProducts.filter(p => p.ean !== eanToRemove));
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -134,8 +85,20 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
       return;
     }
 
-    if (dataSource === 'mvideo' && selectedProducts.length === 0) {
-      setError('Выберите хотя бы один товар');
+
+
+    if (!selectedFile) {
+      setError('Выберите файл Excel');
+      return;
+    }
+
+    if (!showCustomTemplate && !selectedTemplate) {
+      setError('Выберите шаблон из списка');
+      return;
+    }
+
+    if (showCustomTemplate && !customTemplateFile) {
+      setError('Выберите файл шаблона');
       return;
     }
 
@@ -143,13 +106,44 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
     setError('');
 
     try {
-      const productCodes = dataSource === 'mvideo' ? selectedProducts.map(p => p.ean) : undefined;
-      await onAddTask(title, selectedFile, checkType, dataSource, productCodes, useAiKnowledge);
+      let templateId = selectedTemplate;
+      
+      // Если выбран "добавить свой файл шаблона", сначала создаем шаблон
+      if (showCustomTemplate && customTemplateFile) {
+        try {
+          const userData = localStorage.getItem('user');
+          if (!userData) throw new Error('Пользователь не авторизован');
+          
+          const { id } = JSON.parse(userData);
+          
+          // Создаем FormData для отправки файла шаблона
+          const formData = new FormData();
+          formData.append('template_file', customTemplateFile);
+          
+          const templateResponse = await fetch('/api/templates', {
+            method: 'POST',
+            headers: {
+              'user-id': id.toString(),
+            },
+            body: formData,
+          });
+          
+          if (!templateResponse.ok) {
+            throw new Error('Ошибка при создании шаблона');
+          }
+          
+          const newTemplate = await templateResponse.json();
+          templateId = newTemplate.id;
+        } catch (templateErr) {
+          throw new Error(`Ошибка при создании шаблона: ${templateErr instanceof Error ? templateErr.message : 'Неизвестная ошибка'}`);
+        }
+      }
+      
+      // Теперь создаем задачу с полученным или выбранным templateId
+      await onAddTask(title, selectedFile, checkType, 'excel', undefined, useAiKnowledge, templateId, undefined);
       setTitle('');
       setSelectedFile(null);
       setCheckType('none');
-      setDataSource('mvideo');
-      setSelectedProducts([]);
       setUseAiKnowledge(true);
       setIsOpen(false);
     } catch (err) {
@@ -169,10 +163,11 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
     setSelectedFile(null);
     setError('');
     setCheckType('none');
-    setDataSource('mvideo');
-    setSelectedProducts([]);
-    setSearchQuery('');
+
     setUseAiKnowledge(true);
+    setSelectedTemplate(undefined);
+    setCustomTemplateFile(null);
+    setShowCustomTemplate(false);
   };
 
   return (
@@ -198,92 +193,77 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
               disabled={isSubmitting}
             />
           </div>
+
+
+
+
           <div className="space-y-2">
-            <Label htmlFor="dataSource">Источник данных</Label>
-            <Select
-              value={dataSource}
-              onValueChange={setDataSource}
+            <Label htmlFor="file">Файл Excel</Label>
+            <Input
+              id="file"
+              type="file"
+              accept=".xlsx"
+              onChange={handleFileChange}
               disabled={isSubmitting}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Выберите источник данных" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mvideo">М.Видео</SelectItem>
-                <SelectItem value="excel">Файл Excel</SelectItem>
-              </SelectContent>
-            </Select>
+            />
           </div>
 
-          {dataSource === 'mvideo' && (
-            <div className="space-y-2">
-              <Label htmlFor="products">Коды товаров</Label>
-              <div ref={inputContainerRef} className="relative">
-                <div className="flex flex-wrap gap-1 p-2 border rounded-md bg-white min-h-[40px]">
-                  {selectedProducts.map((product) => (
-                    <div
-                      key={product.ean}
-                      className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded text-sm"
-                    >
-                      <span>{product.ean}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveProduct(product.ean)}
-                        className="text-gray-500 hover:text-red-500"
-                        disabled={isSubmitting}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setShowSuggestions(true);
-                    }}
-                    onFocus={() => setShowSuggestions(true)}
-                    placeholder={selectedProducts.length === 0 ? "Введите код товара..." : ""}
-                    className="flex-1 min-w-[100px] outline-none bg-transparent"
-                    disabled={isSubmitting}
-                  />
-                </div>
-                {!isLoading && showSuggestions && searchQuery.trim() && filteredProducts.length > 0 && (
-                  <div className="absolute w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto z-10">
-                    {filteredProducts.map((ean) => (
-                      <div
-                        key={ean}
-                        className="p-2 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => {
-                          if (!selectedProducts.find(p => p.ean === ean)) {
-                            setSelectedProducts([...selectedProducts, { ean, name: ean }]);
-                          }
-                          setSearchQuery('');
-                          setShowSuggestions(false);
-                        }}
-                      >
-                        <div className="text-sm">{ean}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+          <div className="space-y-2">
+            <Label htmlFor="template">Шаблон</Label>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  id="template-select"
+                  name="template-type"
+                  checked={!showCustomTemplate}
+                  onChange={() => setShowCustomTemplate(false)}
+                  disabled={isSubmitting}
+                />
+                <Label htmlFor="template-select" className="text-sm">Выбрать из списка</Label>
               </div>
-            </div>
-          )}
+              
+              {!showCustomTemplate && (
+                <Select
+                  value={selectedTemplate?.toString() || ''}
+                  onValueChange={(value) => setSelectedTemplate(value ? parseInt(value) : undefined)}
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите шаблон" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.map((template) => (
+                      <SelectItem key={template.id} value={template.id.toString()}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
-          {dataSource === 'excel' && (
-            <div className="space-y-2">
-              <Label htmlFor="file">Файл Excel</Label>
-              <Input
-                id="file"
-                type="file"
-                accept=".xlsx"
-                onChange={handleFileChange}
-                disabled={isSubmitting}
-              />
+              <div className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  id="template-custom"
+                  name="template-type"
+                  checked={showCustomTemplate}
+                  onChange={() => setShowCustomTemplate(true)}
+                  disabled={isSubmitting}
+                />
+                <Label htmlFor="template-custom" className="text-sm">Добавить свой файл шаблона</Label>
+              </div>
+              
+              {showCustomTemplate && (
+                <Input
+                  type="file"
+                  accept=".xlsx,.xlsm,.xls,.csv,.txt,.json"
+                  onChange={(e) => setCustomTemplateFile(e.target.files?.[0] || null)}
+                  disabled={isSubmitting}
+                />
+              )}
             </div>
-          )}
+          </div>
 
           <div className="flex items-center justify-between space-x-2">
             <Label htmlFor="useAiKnowledge" className="flex-1">

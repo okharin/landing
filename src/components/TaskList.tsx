@@ -24,6 +24,7 @@ interface Task {
   progress: number;
   inputFiles: string;
   outputFiles: string[];
+  minioResultFiles?: string[];
   userId: string;
   createdAt: string;
   updatedAt: string;
@@ -106,7 +107,9 @@ export function TaskList() {
     checkType: string,
     dataSource: string,
     productCodes?: string[],
-    useAiKnowledge?: boolean
+    useAiKnowledge?: boolean,
+    templateId?: number,
+    customTemplateFile?: File | null
   ) => {
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
@@ -123,6 +126,13 @@ export function TaskList() {
         formData.append('file', file);
       } else if (dataSource === 'mvideo' && productCodes) {
         formData.append('eans', productCodes.join(','));
+      }
+
+      // Добавляем информацию о шаблоне
+      if (templateId) {
+        formData.append('template_id', templateId.toString());
+      } else if (customTemplateFile) {
+        formData.append('template_file', customTemplateFile);
       }
 
       const response = await fetch('/api/tasks', {
@@ -184,7 +194,7 @@ export function TaskList() {
     }
   };
 
-  const handleDownloadFile = async (filename: string) => {
+  const handleDownloadFile = async (filename: string, taskId?: string) => {
     const userData = localStorage.getItem('user');
     if (!userData) {
       setError('Необходима авторизация');
@@ -193,11 +203,22 @@ export function TaskList() {
 
     try {
       const { id } = JSON.parse(userData);
-      const response = await fetch(`${API_URL}/files/${filename}`, {
-        headers: {
-          'user-id': id.toString()
-        }
-      });
+      let response;
+      if (taskId) {
+        // Для файлов результатов используем endpoint с taskId
+        response = await fetch(`${API_URL}/tasks/${taskId}/${filename}`, {
+          headers: {
+            'user-id': id.toString()
+          }
+        });
+      } else {
+        // Для остальных файлов используем старый endpoint
+        response = await fetch(`${API_URL}/files/${filename}`, {
+          headers: {
+            'user-id': id.toString()
+          }
+        });
+      }
 
       if (!response.ok) {
         throw new Error('Ошибка при загрузке файла');
@@ -453,7 +474,7 @@ export function TaskList() {
                                 className={`flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 cursor-pointer ${
                                   isPattern ? 'col-start-1' : isCheck ? 'col-start-2' : ''
                                 }`}
-                                onClick={() => handleDownloadFile(file)}
+                                onClick={() => handleDownloadFile(file, task.id)}
                               >
                                 <Download className="h-4 w-4" />
                                 <span>{formattedName}</span>
@@ -461,6 +482,28 @@ export function TaskList() {
                             );
                           })}
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {task.minioResultFiles && task.minioResultFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">
+                          Файлы результатов MinIO ({task.minioResultFiles.length} {task.minioResultFiles.length === 1 ? 'файл' : 'файлов'}):
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        {task.minioResultFiles.map((file, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center space-x-2 text-sm text-green-600 hover:text-green-800 cursor-pointer"
+                            onClick={() => handleDownloadFile(file, task.id)}
+                          >
+                            <Download className="h-4 w-4" />
+                            <span>{formatFileName(file)}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
