@@ -21,7 +21,7 @@ interface UserData {
 const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserData | null>(null);
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState('overview');
 
   const fetchUserData = async () => {
     try {
@@ -141,11 +141,11 @@ const Dashboard = () => {
             </div>
           </div>
         );
-      case 'analytics':
+      case 'overview':
         return (
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-2xl font-bold font-montserrat mb-6">
-              Аналитика
+              Обзор
             </h2>
             <Analytics />
           </div>
@@ -185,13 +185,13 @@ const Dashboard = () => {
             <div className="bg-white rounded-xl shadow-sm p-4">
               <nav className="space-y-2">
                 <button
-                  onClick={() => setActiveTab('profile')}
+                  onClick={() => setActiveTab('overview')}
                   className={`w-full flex items-center space-x-2 text-gray-700 hover:text-duomind-purple p-2 rounded-lg hover:bg-gray-50 ${
-                    activeTab === 'profile' ? 'bg-gray-50 text-duomind-purple' : ''
+                    activeTab === 'overview' ? 'bg-gray-50 text-duomind-purple' : ''
                   }`}
                 >
-                  <User className="w-5 h-5" />
-                  <span>Профиль</span>
+                  <BarChart2 className="w-5 h-5" />
+                  <span>Обзор</span>
                 </button>
                 {!isAdmin && (
                   <button
@@ -204,26 +204,7 @@ const Dashboard = () => {
                     <span>Задачи</span>
                   </button>
                 )}
-                <button
-                  onClick={() => setActiveTab('analytics')}
-                  className={`w-full flex items-center space-x-2 text-gray-700 hover:text-duomind-purple p-2 rounded-lg hover:bg-gray-50 ${
-                    activeTab === 'analytics' ? 'bg-gray-50 text-duomind-purple' : ''
-                  }`}
-                >
-                  <BarChart2 className="w-5 h-5" />
-                  <span>Аналитика</span>
-                </button>
-                {isAdmin && (
-                  <button
-                    onClick={() => setActiveTab('users')}
-                    className={`w-full flex items-center space-x-2 text-gray-700 hover:text-duomind-purple p-2 rounded-lg hover:bg-gray-50 ${
-                      activeTab === 'users' ? 'bg-gray-50 text-duomind-purple' : ''
-                    }`}
-                  >
-                    <Users className="w-5 h-5" />
-                    <span>Пользователи</span>
-                  </button>
-                )}
+
                 {isAdmin && (
                   <button
                     onClick={() => setActiveTab('templates')}
@@ -235,6 +216,26 @@ const Dashboard = () => {
                     <span>Шаблоны</span>
                   </button>
                 )}
+                {isAdmin && (
+                  <button
+                    onClick={() => setActiveTab('users')}
+                    className={`w-full flex items-center space-x-2 text-gray-700 hover:text-duomind-purple p-2 rounded-lg hover:bg-gray-50 ${
+                      activeTab === 'users' ? 'bg-gray-50 text-duomind-purple' : ''
+                    }`}
+                  >
+                    <Users className="w-5 h-5" />
+                    <span>Пользователи</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setActiveTab('profile')}
+                  className={`w-full flex items-center space-x-2 text-gray-700 hover:text-duomind-purple p-2 rounded-lg hover:bg-gray-50 ${
+                    activeTab === 'profile' ? 'bg-gray-50 text-duomind-purple' : ''
+                  }`}
+                >
+                  <User className="w-5 h-5" />
+                  <span>Профиль</span>
+                </button>
               </nav>
             </div>
           </div>

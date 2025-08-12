@@ -9,14 +9,9 @@ import {
 } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
-import { Plus, AlertCircle } from 'lucide-react';
+
+
+import { Plus, AlertCircle, ChevronDown } from 'lucide-react';
 import { Switch } from "./ui/switch";
 
 
@@ -38,14 +33,18 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<number | undefined>(undefined);
   const [customTemplateFile, setCustomTemplateFile] = useState<File | null>(null);
   const [showCustomTemplate, setShowCustomTemplate] = useState(false);
+  const [templatePopoverOpen, setTemplatePopoverOpen] = useState(false);
+  const [filteredTemplates, setFilteredTemplates] = useState<Array<{id: number, name: string}>>([]);
+  const [templateSearchQuery, setTemplateSearchQuery] = useState('');
 
-  useEffect(() => {
+    useEffect(() => {
     const fetchTemplates = async () => {
       try {
         const response = await fetch('/api/templates');
         if (response.ok) {
           const data = await response.json();
           setTemplates(data);
+          setFilteredTemplates(data);
         }
       } catch (error) {
         console.error('Ошибка при загрузке шаблонов:', error);
@@ -56,6 +55,25 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
       fetchTemplates();
     }
   }, [isOpen]);
+
+  // Закрытие выпадающего списка шаблонов при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (templatePopoverOpen) {
+        const target = event.target as Element;
+        if (!target.closest('.template-dropdown')) {
+          setTemplatePopoverOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [templatePopoverOpen]);
+
+
 
 
 
@@ -88,7 +106,7 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
 
 
     if (!selectedFile) {
-      setError('Выберите файл Excel');
+              setError('Выберите файл для обработки');
       return;
     }
 
@@ -145,6 +163,12 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
       setSelectedFile(null);
       setCheckType('none');
       setUseAiKnowledge(true);
+      setSelectedTemplate(undefined);
+      setCustomTemplateFile(null);
+      setShowCustomTemplate(false);
+      setTemplatePopoverOpen(false);
+      setFilteredTemplates(templates);
+      setTemplateSearchQuery('');
       setIsOpen(false);
     } catch (err) {
       if (err instanceof Error) {
@@ -168,6 +192,10 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
     setSelectedTemplate(undefined);
     setCustomTemplateFile(null);
     setShowCustomTemplate(false);
+    setTemplatePopoverOpen(false);
+    setFilteredTemplates(templates);
+    setTemplateSearchQuery('');
+
   };
 
   return (
@@ -198,7 +226,7 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
 
 
           <div className="space-y-2">
-            <Label htmlFor="file">Файл Excel</Label>
+            <Label htmlFor="file">Файл для обработки</Label>
             <Input
               id="file"
               type="file"
@@ -224,22 +252,65 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
               </div>
               
               {!showCustomTemplate && (
-                <Select
-                  value={selectedTemplate?.toString() || ''}
-                  onValueChange={(value) => setSelectedTemplate(value ? parseInt(value) : undefined)}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите шаблон" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {templates.map((template) => (
-                      <SelectItem key={template.id} value={template.id.toString()}>
-                        {template.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="relative template-dropdown">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    disabled={isSubmitting}
+                    className="w-full justify-between"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setTemplatePopoverOpen(!templatePopoverOpen);
+                    }}
+                  >
+                    {selectedTemplate
+                      ? templates.find((template) => template.id === selectedTemplate)?.name
+                      : "Выберите шаблон..."}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                  
+                  {templatePopoverOpen && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                      <div className="p-2">
+                        <Input
+                          placeholder="Поиск шаблонов..."
+                          className="mb-2"
+                          value={templateSearchQuery}
+                          autoFocus
+                          onChange={(e) => {
+                            const query = e.target.value;
+                            setTemplateSearchQuery(query);
+                            const filtered = templates.filter(template =>
+                              template.name.toLowerCase().includes(query.toLowerCase())
+                            );
+                            setFilteredTemplates(filtered);
+                          }}
+                        />
+                        <div className="max-h-60 overflow-y-auto">
+                          {filteredTemplates.length > 0 ? (
+                            filteredTemplates.map((template) => (
+                              <div
+                                key={template.id}
+                                className="px-2 py-2 hover:bg-gray-100 cursor-pointer rounded text-sm"
+                                onClick={() => {
+                                  setSelectedTemplate(template.id);
+                                  setTemplatePopoverOpen(false);
+                                }}
+                              >
+                                {template.name}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="px-2 py-2 text-sm text-gray-500">
+                              Шаблоны не найдены
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               <div className="flex items-center space-x-2">
@@ -279,19 +350,16 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
 
           <div className="space-y-2">
             <Label htmlFor="checkType">Проверка результата</Label>
-            <Select
+            <select
+              id="checkType"
               value={checkType}
-              onValueChange={setCheckType}
+              onChange={(e) => setCheckType(e.target.value)}
               disabled={isSubmitting}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Выберите тип проверки" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Без проверки</SelectItem>
-                <SelectItem value="selective">Выборочная проверка</SelectItem>
-              </SelectContent>
-            </Select>
+              <option value="none">Без проверки</option>
+              <option value="selective">Выборочная проверка</option>
+            </select>
           </div>
 
           {error && (

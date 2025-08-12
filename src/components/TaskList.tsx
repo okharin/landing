@@ -281,15 +281,7 @@ export function TaskList() {
     }
   };
 
-  const getDataSourceText = (task: Task) => {
-    if (task.eans && task.eans.length > 0) {
-      return 'М.Видео';
-    }
-    if (task.inputFiles && task.inputFiles.length > 0) {
-      return 'Excel-файл';
-    }
-    return 'Не указан';
-  };
+
 
   const toggleResults = (taskId: string) => {
     console.log('Toggle results for task:', taskId);
@@ -332,23 +324,7 @@ export function TaskList() {
     }
   };
 
-  const formatFileName = (fileName: string) => {
 
-    return fileName
-    // Удаляем расширение файла и timestamp
-    // const nameWithoutExtension = fileName.replace(/\.[^/.]+$/, '').replace(/_\d+$/, '');
-    
-    // // Преобразуем названия по шаблонам
-    // if (nameWithoutExtension.startsWith('pattern_')) {
-    //   // const number = nameWithoutExtension.split('_')[1];
-    //   return `Заполненный шаблон`;
-    // } else if (nameWithoutExtension.startsWith('check_')) {
-    //   const number = nameWithoutExtension.split('_')[1];
-    //   return `Проверка заполнения шаблона №${number}`;
-    // }
-    
-    // return nameWithoutExtension;
-  };
 
   if (loading) {
     return <div className="text-center">Загрузка...</div>;
@@ -412,6 +388,8 @@ export function TaskList() {
                     </div>
                   </div>
 
+
+
                   <div className="flex items-center space-x-2 text-sm text-gray-500">
                     <Clock className="h-4 w-4" />
                     <span>{getStatusText(task.status)}</span>
@@ -463,7 +441,6 @@ export function TaskList() {
                       <div className={`transition-all duration-200 ${expandedResults[task.id] ? 'block' : 'hidden'}`}>
                         <div className="grid grid-cols-2 gap-4">
                           {task.outputFiles.map((file, index) => {
-                            const formattedName = formatFileName(file);
                             // Определяем, к какому столбцу относится файл
                             const isPattern = file.startsWith('pattern_');
                             const isCheck = file.startsWith('check_');
@@ -477,7 +454,7 @@ export function TaskList() {
                                 onClick={() => handleDownloadFile(file, task.id)}
                               >
                                 <Download className="h-4 w-4" />
-                                <span>{formattedName}</span>
+                                <span>Результат</span>
                               </div>
                             );
                           })}
@@ -487,24 +464,17 @@ export function TaskList() {
                   )}
 
                   {task.minioResultFiles && task.minioResultFiles.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">
-                          Файлы результатов MinIO ({task.minioResultFiles.length} {task.minioResultFiles.length === 1 ? 'файл' : 'файлов'}):
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-1 gap-2">
-                        {task.minioResultFiles.map((file, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center space-x-2 text-sm text-green-600 hover:text-green-800 cursor-pointer"
-                            onClick={() => handleDownloadFile(file, task.id)}
-                          >
-                            <Download className="h-4 w-4" />
-                            <span>{formatFileName(file)}</span>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {task.minioResultFiles.map((file, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center space-x-2 text-sm text-green-600 hover:text-green-800 cursor-pointer"
+                          onClick={() => handleDownloadFile(file, task.id)}
+                        >
+                          <Download className="h-4 w-4" />
+                          <span>Результат</span>
+                        </div>
+                      ))}
                     </div>
                   )}
 
@@ -515,25 +485,31 @@ export function TaskList() {
                         {getCheckTypeText(task.checkType)}
                       </span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <span>Источник данных:</span>
-                      <span>
-                        {getDataSourceText(task)}
-                      </span>
-                    </div>
                   </div>
 
-                  {task.status === 'COMPLETED' && task.result && (
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(task.result, '_blank')}
-                      >
-                        Скачать результат
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    {task.inputFiles && (
+                      <div className="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 cursor-pointer"
+                           onClick={() => handleDownloadFile(task.inputFiles, task.id)}>
+                        <Download className="h-4 w-4" />
+                        <span>Исходный файл</span>
+                      </div>
+                    )}
+                    {task.outputFiles?.length > 0 && (
+                      <div className="flex items-center space-x-2 text-sm text-green-600 hover:text-green-800 cursor-pointer"
+                           onClick={() => handleDownloadFile(task.outputFiles[0], task.id)}>
+                        <Download className="h-4 w-4" />
+                        <span>Результат</span>
+                      </div>
+                    )}
+                    {task.minioResultFiles && task.minioResultFiles.length > 0 && (
+                      <div className="flex items-center space-x-2 text-sm text-green-600 hover:text-green-800 cursor-pointer"
+                           onClick={() => handleDownloadFile(task.minioResultFiles![0], task.id)}>
+                        <Download className="h-4 w-4" />
+                        <span>Результат</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
