@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { LogOut, User, BarChart2, Users, CheckSquare, FileText } from "lucide-react";
+import { LogOut, User, BarChart2, Users, CheckSquare, FileText, Building2 } from "lucide-react";
 import { UserManagement } from '@/components/UserManagement';
+import { CompanyManagement } from '@/components/CompanyManagement';
 import { TaskList } from '@/components/TaskList';
 import Analytics from '@/components/Analytics';
 import { TemplateManagement } from '@/components/TemplateManagement';
@@ -16,6 +17,8 @@ interface UserData {
   role: 'USER' | 'ADMIN';
   ai_request_limit: number;
   ai_request_used: number;
+  company_ai_request_limit: number;
+  company_ai_request_used: number;
 }
 
 const Dashboard = () => {
@@ -75,6 +78,8 @@ const Dashboard = () => {
     switch (activeTab) {
       case 'users':
         return isAdmin ? <UserManagement /> : null;
+      case 'companies':
+        return isAdmin ? <CompanyManagement /> : null;
       case 'templates':
         return isAdmin ? <TemplateManagement /> : null;
       case 'tasks':
@@ -122,17 +127,17 @@ const Dashboard = () => {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <p className="text-lg font-medium">
-                          {user.ai_request_used} / {user.ai_request_limit}
+                          {user.company_ai_request_used} / {user.company_ai_request_limit}
                         </p>
                         <div className="w-48 bg-gray-200 rounded-full h-2.5">
                           <div 
                             className="bg-duomind-purple h-2.5 rounded-full" 
-                            style={{ width: `${(user.ai_request_used / user.ai_request_limit) * 100}%` }}
+                            style={{ width: `${(user.company_ai_request_used / user.company_ai_request_limit) * 100}%` }}
                           ></div>
                         </div>
                       </div>
                       <p className="text-sm text-gray-500">
-                        {user.ai_request_limit - user.ai_request_used} запросов осталось
+                        {user.company_ai_request_limit - user.company_ai_request_used} запросов осталось
                       </p>
                     </div>
                   </div>
@@ -214,6 +219,17 @@ const Dashboard = () => {
                   >
                     <FileText className="w-5 h-5" />
                     <span>Шаблоны</span>
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={() => setActiveTab('companies')}
+                    className={`w-full flex items-center space-x-2 text-gray-700 hover:text-duomind-purple p-2 rounded-lg hover:bg-gray-50 ${
+                      activeTab === 'companies' ? 'bg-gray-50 text-duomind-purple' : ''
+                    }`}
+                  >
+                    <Building2 className="w-5 h-5" />
+                    <span>Компании</span>
                   </button>
                 )}
                 {isAdmin && (

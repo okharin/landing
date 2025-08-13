@@ -846,7 +846,7 @@ export const TemplateManagement = () => {
                       value={newFewshotData.user_text}
                       onChange={(e) => setNewFewshotData(prev => ({ ...prev, user_text: e.target.value }))}
                       className="w-full bg-white border border-green-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      rows={4}
+                      rows={8}
                       placeholder="Введите текст пользователя..."
                     />
                   </div>
@@ -859,7 +859,7 @@ export const TemplateManagement = () => {
                       value={newFewshotData.assistant_response}
                       onChange={(e) => setNewFewshotData(prev => ({ ...prev, assistant_response: e.target.value }))}
                       className="w-full bg-white border border-green-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      rows={4}
+                      rows={8}
                       placeholder="Введите ответ ассистента..."
                     />
                   </div>
@@ -902,7 +902,7 @@ export const TemplateManagement = () => {
                               value={editingFewshotData.user_text}
                               onChange={(e) => setEditingFewshotData(prev => ({ ...prev, user_text: e.target.value }))}
                               className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-duomind-purple focus:border-transparent"
-                              rows={4}
+                              rows={8}
                             />
                           </div>
                           <div>
@@ -911,7 +911,7 @@ export const TemplateManagement = () => {
                               value={editingFewshotData.assistant_response}
                               onChange={(e) => setEditingFewshotData(prev => ({ ...prev, assistant_response: e.target.value }))}
                               className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-duomind-purple focus:border-transparent"
-                              rows={4}
+                              rows={8}
                             />
                           </div>
                         </div>
@@ -937,14 +937,14 @@ export const TemplateManagement = () => {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           <div>
                             <h4 className="font-medium text-gray-900 mb-2">Ввод пользователя:</h4>
-                            <div className="bg-white border border-gray-200 rounded-md p-3 text-sm">
-                              {fewshot.user_text}
+                            <div className="bg-white border border-gray-200 rounded-md p-3 text-sm break-words overflow-hidden">
+                              <div className="whitespace-pre-wrap">{fewshot.user_text}</div>
                             </div>
                           </div>
                           <div>
                             <h4 className="font-medium text-gray-900 mb-2">Ответ ассистента:</h4>
-                            <div className="bg-white border border-gray-200 rounded-md p-3 text-sm">
-                              {fewshot.assistant_response}
+                            <div className="bg-white border border-gray-200 rounded-md p-3 text-sm break-words overflow-hidden">
+                              <div className="whitespace-pre-wrap">{fewshot.assistant_response}</div>
                             </div>
                           </div>
                         </div>
@@ -995,9 +995,13 @@ export const TemplateManagement = () => {
             <div className="mb-4 p-3 bg-gray-50 rounded border">
               <div className="text-sm">
                 <div className="font-medium mb-2">Ввод пользователя:</div>
-                <div className="text-gray-600 mb-3">{deletingFewshot.user_text.substring(0, 100)}{deletingFewshot.user_text.length > 100 ? '...' : ''}</div>
+                <div className="text-gray-600 mb-3 break-words overflow-hidden">
+                  <div className="whitespace-pre-wrap">{deletingFewshot.user_text.substring(0, 100)}{deletingFewshot.user_text.length > 100 ? '...' : ''}</div>
+                </div>
                 <div className="font-medium mb-2">Ответ ассистента:</div>
-                <div className="text-gray-600">{deletingFewshot.assistant_response.substring(0, 100)}{deletingFewshot.assistant_response.length > 100 ? '...' : ''}</div>
+                <div className="text-gray-600 break-words overflow-hidden">
+                  <div className="whitespace-pre-wrap">{deletingFewshot.assistant_response.substring(0, 100)}{deletingFewshot.assistant_response.length > 100 ? '...' : ''}</div>
+                </div>
               </div>
             </div>
             <div className="flex justify-end space-x-2">

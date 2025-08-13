@@ -42,7 +42,7 @@ const Analytics: React.FC = () => {
       try {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         
-        const response = await fetch(`${API_URL}/analytics`, {
+        const response = await fetch(`${API_URL}/analytics/${user.id}`, {
           headers: {
             'user-id': user.id || '',
           },

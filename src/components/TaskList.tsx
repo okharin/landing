@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
-import { Trash2, Download, Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Trash2, Download, Clock, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { AddTaskModal } from './AddTaskModal';
@@ -25,6 +25,7 @@ interface Task {
   inputFiles: string;
   outputFiles: string[];
   minioResultFiles?: string[];
+  minioInputFiles?: string[];
   userId: string;
   createdAt: string;
   updatedAt: string;
@@ -39,7 +40,7 @@ export function TaskList() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [expandedResults, setExpandedResults] = useState<{ [key: string]: boolean }>({});
+
   const [currentPage, setCurrentPage] = useState(1);
   const [tasksPerPage, setTasksPerPage] = useState(5);
   const [searchQuery, setSearchQuery] = useState('');
@@ -253,14 +254,21 @@ export function TaskList() {
     }
   };
 
-  const getStatusText = (status: Task['status']) => {
+  const getStatusText = (status: Task['status'], checkType?: string | null) => {
     switch (status) {
       case 'PENDING':
         return 'Ожидает обработки';
       case 'PROCESSING':
         return 'В обработке';
       case 'COMPLETED':
-        return 'Завершена';
+        const checkText = getCheckTypeText(checkType || null);
+        if (checkText === 'Без проверки') {
+          return 'Завершена (без проверки)';
+        } else if (checkText === 'Выборочная проверка') {
+          return 'Завершена (с выборочной проверкой)';
+        } else {
+          return 'Завершена';
+        }
       case 'FAILED':
         return 'Ошибка';
       default:
@@ -283,18 +291,7 @@ export function TaskList() {
 
 
 
-  const toggleResults = (taskId: string) => {
-    console.log('Toggle results for task:', taskId);
-    console.log('Current expandedResults:', expandedResults);
-    setExpandedResults(prev => {
-      const newState = {
-        ...prev,
-        [taskId]: !prev[taskId]
-      };
-      console.log('New expandedResults:', newState);
-      return newState;
-    });
-  };
+
 
   const filteredTasks = tasks.filter(task =>
     task.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -392,7 +389,7 @@ export function TaskList() {
 
                   <div className="flex items-center space-x-2 text-sm text-gray-500">
                     <Clock className="h-4 w-4" />
-                    <span>{getStatusText(task.status)}</span>
+                    <span>{getStatusText(task.status, task.checkType)}</span>
                   </div>
 
                   {task.error && (
@@ -413,84 +410,16 @@ export function TaskList() {
                     </div>
                   )}
 
-                  {task.outputFiles?.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">
-                          Результаты ({task.outputFiles.length} {task.outputFiles.length === 1 ? 'файл' : 'файлов'}):
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleResults(task.id)}
-                          className="flex items-center space-x-1"
-                        >
-                          {expandedResults[task.id] ? (
-                            <>
-                              <span>Скрыть</span>
-                              <ChevronUp className="h-4 w-4" />
-                            </>
-                          ) : (
-                            <>
-                              <span>Показать</span>
-                              <ChevronDown className="h-4 w-4" />
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      <div className={`transition-all duration-200 ${expandedResults[task.id] ? 'block' : 'hidden'}`}>
-                        <div className="grid grid-cols-2 gap-4">
-                          {task.outputFiles.map((file, index) => {
-                            // Определяем, к какому столбцу относится файл
-                            const isPattern = file.startsWith('pattern_');
-                            const isCheck = file.startsWith('check_');
-                            
-                            return (
-                              <div
-                                key={index}
-                                className={`flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 cursor-pointer ${
-                                  isPattern ? 'col-start-1' : isCheck ? 'col-start-2' : ''
-                                }`}
-                                onClick={() => handleDownloadFile(file, task.id)}
-                              >
-                                <Download className="h-4 w-4" />
-                                <span>Результат</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
-                  {task.minioResultFiles && task.minioResultFiles.length > 0 && (
-                    <div className="grid grid-cols-1 gap-2">
-                      {task.minioResultFiles.map((file, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center space-x-2 text-sm text-green-600 hover:text-green-800 cursor-pointer"
-                          onClick={() => handleDownloadFile(file, task.id)}
-                        >
-                          <Download className="h-4 w-4" />
-                          <span>Результат</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
 
-                  <div className="flex flex-col space-y-2 text-sm text-gray-500">
-                    <div className="flex items-center space-x-2">
-                      <span>Проверка:</span>
-                      <span>
-                        {getCheckTypeText(task.checkType)}
-                      </span>
-                    </div>
-                  </div>
+
+
+
 
                   <div className="flex items-center space-x-2">
-                    {task.inputFiles && (
+                    {task.minioInputFiles && task.minioInputFiles.length > 0 && (
                       <div className="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 cursor-pointer"
-                           onClick={() => handleDownloadFile(task.inputFiles, task.id)}>
+                           onClick={() => handleDownloadFile(task.minioInputFiles![0], task.id)}>
                         <Download className="h-4 w-4" />
                         <span>Исходный файл</span>
                       </div>

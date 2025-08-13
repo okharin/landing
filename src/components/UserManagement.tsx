@@ -5,26 +5,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { API_URL } from '@/config/api';
 
+interface Company {
+  id: number;
+  name: string;
+  ai_request_limit: number;
+  ai_request_used: number;
+  created_at: string;
+  updated_at: string;
+}
+
 interface User {
   id: number;
   email: string;
   name: string;
-  company: string | null;
+  company_id: number | null;
+  company_name: string | null;
   role: 'USER' | 'ADMIN';
-  ai_request_limit: number;
 }
 
 interface UserFormData {
   email: string;
   name: string;
-  company: string;
+  company_id: number;
   password: string;
   role: 'USER' | 'ADMIN';
-  ai_request_limit: number;
 }
 
 export const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -33,11 +42,31 @@ export const UserManagement = () => {
   const [formData, setFormData] = useState<UserFormData>({
     email: '',
     name: '',
-    company: '',
+    company_id: 0,
     password: '',
-    role: 'USER',
-    ai_request_limit: 0
+    role: 'USER'
   });
+
+
+
+  const fetchCompanies = async () => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) throw new Error('Пользователь не авторизован');
+
+      const { id } = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/companies`, {
+        headers: {
+          'user-id': id.toString(),
+        },
+      });
+      if (!response.ok) throw new Error('Ошибка при загрузке компаний');
+      const data = await response.json();
+      setCompanies(data);
+    } catch (err) {
+      console.error('Ошибка при загрузке компаний:', err);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -61,6 +90,7 @@ export const UserManagement = () => {
   };
 
   useEffect(() => {
+    fetchCompanies();
     fetchUsers();
   }, []);
 
@@ -107,7 +137,7 @@ export const UserManagement = () => {
       const newUser = await response.json();
       setUsers([...users, newUser]);
       setIsAddModalOpen(false);
-      setFormData({ email: '', name: '', company: '', password: '', role: 'USER', ai_request_limit: 0 });
+      setFormData({ email: '', name: '', company_id: 0, password: '', role: 'USER' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Произошла ошибка');
     }
@@ -138,7 +168,7 @@ export const UserManagement = () => {
         user.id === editingUser.id ? updatedUser : user
       ));
       setEditingUser(null);
-      setFormData({ email: '', name: '', company: '', password: '', role: 'USER', ai_request_limit: 0 });
+      setFormData({ email: '', name: '', company_id: 0, password: '', role: 'USER' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Произошла ошибка');
     }
@@ -148,20 +178,21 @@ export const UserManagement = () => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'company_id' ? parseInt(value) || 0 : value
     }));
   };
 
+
+
   const openEditModal = (user: User) => {
     setEditingUser(user);
-    setFormData({
-      email: user.email,
-      name: user.name,
-      company: user.company || '',
-      password: '',
-      role: user.role,
-      ai_request_limit: user.ai_request_limit
-    });
+          setFormData({
+        email: user.email,
+        name: user.name,
+        company_id: user.company_id || 0,
+        password: '',
+        role: user.role
+      });
   };
 
   if (loading) return <div className="text-center py-8">Загрузка...</div>;
@@ -178,10 +209,9 @@ export const UserManagement = () => {
             setFormData({
               email: '',
               name: '',
-              company: '',
+              company_id: 0,
               password: '',
-              role: 'USER',
-              ai_request_limit: 0
+              role: 'USER'
             });
             setIsAddModalOpen(true);
           }}
@@ -200,7 +230,7 @@ export const UserManagement = () => {
               <th className="text-left py-3 px-4">Email</th>
               <th className="text-left py-3 px-4">Компания</th>
               <th className="text-left py-3 px-4">Роль</th>
-              <th className="text-left py-3 px-4">Лимит запросов к ИИ</th>
+
               <th className="text-left py-3 px-4">Действия</th>
             </tr>
           </thead>
@@ -209,7 +239,7 @@ export const UserManagement = () => {
               <tr key={user.id} className="border-b hover:bg-gray-50">
                 <td className="py-3 px-4">{user.name}</td>
                 <td className="py-3 px-4">{user.email}</td>
-                <td className="py-3 px-4">{user.company || '-'}</td>
+                <td className="py-3 px-4">{user.company_name || '-'}</td>
                 <td className="py-3 px-4">
                   <span className={`px-2 py-1 rounded-full text-sm ${
                     user.role === 'ADMIN' 
@@ -219,7 +249,7 @@ export const UserManagement = () => {
                     {user.role === 'ADMIN' ? 'Администратор' : 'Пользователь'}
                   </span>
                 </td>
-                <td className="py-3 px-4">{user.ai_request_limit}</td>
+
                 <td className="py-3 px-4">
                   <div className="flex space-x-2">
                     <Button
@@ -263,13 +293,21 @@ export const UserManagement = () => {
               </div>
               <div>
                 <Label htmlFor="company">Компания</Label>
-                <Input
+                <select
                   id="company"
-                  name="company"
-                  value={formData.company}
+                  name="company_id"
+                  value={formData.company_id}
                   onChange={handleFormChange}
                   required
-                />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-duomind-purple focus:border-transparent"
+                >
+                  <option value={0}>Выберите компанию</option>
+                  {companies.map(company => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <Label htmlFor="email">Email</Label>
@@ -306,19 +344,7 @@ export const UserManagement = () => {
                   <option value="ADMIN">Администратор</option>
                 </select>
               </div>
-              {formData.role === 'USER' && (
-                <div>
-                  <Label htmlFor="ai_request_limit">Лимит запросов к ИИ</Label>
-                  <Input
-                    id="ai_request_limit"
-                    name="ai_request_limit"
-                    type="number"
-                    value={formData.ai_request_limit}
-                    onChange={handleFormChange}
-                    required
-                  />
-                </div>
-              )}
+
               <div className="flex justify-end space-x-2">
                 <Button
                   type="button"
@@ -352,13 +378,21 @@ export const UserManagement = () => {
               </div>
               <div>
                 <Label htmlFor="edit-company">Компания</Label>
-                <Input
+                <select
                   id="edit-company"
-                  name="company"
-                  value={formData.company}
+                  name="company_id"
+                  value={formData.company_id}
                   onChange={handleFormChange}
                   required
-                />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-duomind-purple focus:border-transparent"
+                >
+                  <option value={0}>Выберите компанию</option>
+                  {companies.map(company => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <Label htmlFor="edit-email">Email</Label>
@@ -394,19 +428,7 @@ export const UserManagement = () => {
                   <option value="ADMIN">Администратор</option>
                 </select>
               </div>
-              {formData.role === 'USER' && (
-                <div>
-                  <Label htmlFor="edit-ai_request_limit">Лимит запросов к ИИ</Label>
-                  <Input
-                    id="edit-ai_request_limit"
-                    name="ai_request_limit"
-                    type="number"
-                    value={formData.ai_request_limit}
-                    onChange={handleFormChange}
-                    required
-                  />
-                </div>
-              )}
+
               <div className="flex justify-end space-x-2">
                 <Button
                   type="button"
