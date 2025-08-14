@@ -110,7 +110,8 @@ export function TaskList() {
     productCodes?: string[],
     useAiKnowledge?: boolean,
     templateId?: number,
-    customTemplateFile?: File | null
+    customTemplateFile?: File | null,
+    enableTemplateFiltering?: boolean
   ) => {
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
@@ -134,6 +135,11 @@ export function TaskList() {
         formData.append('template_id', templateId.toString());
       } else if (customTemplateFile) {
         formData.append('template_file', customTemplateFile);
+      }
+
+      // Добавляем информацию о том, обрабатывать ли только товары категории шаблона
+      if (enableTemplateFiltering) {
+        formData.append('enableTemplateFiltering', 'true');
       }
 
       const response = await fetch('/api/tasks', {

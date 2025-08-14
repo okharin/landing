@@ -17,7 +17,7 @@ import { Switch } from "./ui/switch";
 
 
 interface AddTaskModalProps {
-  onAddTask: (title: string, file: File | null, checkType: string, dataSource: string, productCodes?: string[], useAiKnowledge?: boolean, templateId?: number, customTemplateFile?: File | null) => Promise<void>;
+  onAddTask: (title: string, file: File | null, checkType: string, dataSource: string, productCodes?: string[], useAiKnowledge?: boolean, templateId?: number, customTemplateFile?: File | null, enableTemplateFiltering?: boolean) => Promise<void>;
 }
 
 export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
@@ -36,6 +36,8 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
   const [templatePopoverOpen, setTemplatePopoverOpen] = useState(false);
   const [filteredTemplates, setFilteredTemplates] = useState<Array<{id: number, name: string}>>([]);
   const [templateSearchQuery, setTemplateSearchQuery] = useState('');
+  const [enableTemplateFiltering, setEnableTemplateFiltering] = useState(false);
+  const [checkTypePopoverOpen, setCheckTypePopoverOpen] = useState(false);
 
     useEffect(() => {
     const fetchTemplates = async () => {
@@ -56,7 +58,7 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
     }
   }, [isOpen]);
 
-  // Закрытие выпадающего списка шаблонов при клике вне его
+  // Закрытие выпадающих списков при клике вне их
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (templatePopoverOpen) {
@@ -65,13 +67,19 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
           setTemplatePopoverOpen(false);
         }
       }
+      if (checkTypePopoverOpen) {
+        const target = event.target as Element;
+        if (!target.closest('.check-type-dropdown')) {
+          setCheckTypePopoverOpen(false);
+        }
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [templatePopoverOpen]);
+  }, [templatePopoverOpen, checkTypePopoverOpen]);
 
 
 
@@ -111,7 +119,7 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
     }
 
     if (!showCustomTemplate && !selectedTemplate) {
-      setError('Выберите шаблон из списка');
+      setError('Выберите категорию товаров');
       return;
     }
 
@@ -158,7 +166,7 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
       }
       
       // Теперь создаем задачу с полученным или выбранным templateId
-      await onAddTask(title, selectedFile, checkType, 'excel', undefined, useAiKnowledge, templateId, undefined);
+      await onAddTask(title, selectedFile, checkType, 'excel', undefined, useAiKnowledge, templateId, undefined, enableTemplateFiltering);
       setTitle('');
       setSelectedFile(null);
       setCheckType('none');
@@ -195,7 +203,8 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
     setTemplatePopoverOpen(false);
     setFilteredTemplates(templates);
     setTemplateSearchQuery('');
-
+    setEnableTemplateFiltering(false);
+    setCheckTypePopoverOpen(false);
   };
 
   return (
@@ -237,6 +246,69 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="template">Категория товаров</Label>
+            <div className="relative template-dropdown">
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                disabled={isSubmitting}
+                className="w-full justify-between"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setTemplatePopoverOpen(!templatePopoverOpen);
+                }}
+              >
+                {selectedTemplate
+                  ? templates.find((template) => template.id === selectedTemplate)?.name
+                  : "Выберите категорию..."}
+                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+              
+              {templatePopoverOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                  <div className="p-2">
+                    <Input
+                      placeholder="Поиск категорий..."
+                      className="mb-2"
+                      value={templateSearchQuery}
+                      autoFocus
+                      onChange={(e) => {
+                        const query = e.target.value;
+                        setTemplateSearchQuery(query);
+                        const filtered = templates.filter(template =>
+                          template.name.toLowerCase().includes(query.toLowerCase())
+                        );
+                        setFilteredTemplates(filtered);
+                      }}
+                    />
+                    <div className="max-h-60 overflow-y-auto">
+                      {filteredTemplates.length > 0 ? (
+                        filteredTemplates.map((template) => (
+                          <div
+                            key={template.id}
+                            className="px-2 py-2 hover:bg-gray-100 cursor-pointer rounded"
+                            onClick={() => {
+                              setSelectedTemplate(template.id);
+                              setTemplatePopoverOpen(false);
+                            }}
+                          >
+                            {template.name}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-2 py-2 text-gray-500">
+                          Категории не найдены
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="template">Шаблон</Label>
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
@@ -248,71 +320,9 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
                   onChange={() => setShowCustomTemplate(false)}
                   disabled={isSubmitting}
                 />
-                <Label htmlFor="template-select" className="text-sm">Выбрать из списка</Label>
+                <Label htmlFor="template-select">Использовать существующий</Label>
               </div>
               
-              {!showCustomTemplate && (
-                <div className="relative template-dropdown">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    role="combobox"
-                    disabled={isSubmitting}
-                    className="w-full justify-between"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setTemplatePopoverOpen(!templatePopoverOpen);
-                    }}
-                  >
-                    {selectedTemplate
-                      ? templates.find((template) => template.id === selectedTemplate)?.name
-                      : "Выберите шаблон..."}
-                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                  
-                  {templatePopoverOpen && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
-                      <div className="p-2">
-                        <Input
-                          placeholder="Поиск шаблонов..."
-                          className="mb-2"
-                          value={templateSearchQuery}
-                          autoFocus
-                          onChange={(e) => {
-                            const query = e.target.value;
-                            setTemplateSearchQuery(query);
-                            const filtered = templates.filter(template =>
-                              template.name.toLowerCase().includes(query.toLowerCase())
-                            );
-                            setFilteredTemplates(filtered);
-                          }}
-                        />
-                        <div className="max-h-60 overflow-y-auto">
-                          {filteredTemplates.length > 0 ? (
-                            filteredTemplates.map((template) => (
-                              <div
-                                key={template.id}
-                                className="px-2 py-2 hover:bg-gray-100 cursor-pointer rounded text-sm"
-                                onClick={() => {
-                                  setSelectedTemplate(template.id);
-                                  setTemplatePopoverOpen(false);
-                                }}
-                              >
-                                {template.name}
-                              </div>
-                            ))
-                          ) : (
-                            <div className="px-2 py-2 text-sm text-gray-500">
-                              Шаблоны не найдены
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
               <div className="flex items-center space-x-2">
                 <input
                   type="radio"
@@ -322,7 +332,7 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
                   onChange={() => setShowCustomTemplate(true)}
                   disabled={isSubmitting}
                 />
-                <Label htmlFor="template-custom" className="text-sm">Добавить свой файл шаблона</Label>
+                <Label htmlFor="template-custom">Загрузить новый</Label>
               </div>
               
               {showCustomTemplate && (
@@ -334,6 +344,19 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
                 />
               )}
             </div>
+          </div>
+
+          {/* Переключатель для обработки только товаров категории выбранного шаблона */}
+          <div className="flex items-center justify-between space-x-2">
+            <Label htmlFor="enableTemplateFiltering" className="flex-1">
+              Обрабатывать только товары выбранной категории
+            </Label>
+            <Switch
+              id="enableTemplateFiltering"
+              checked={enableTemplateFiltering}
+              onCheckedChange={setEnableTemplateFiltering}
+              disabled={isSubmitting}
+            />
           </div>
 
           <div className="flex items-center justify-between space-x-2">
@@ -350,20 +373,51 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
 
           <div className="space-y-2">
             <Label htmlFor="checkType">Проверка результата</Label>
-            <select
-              id="checkType"
-              value={checkType}
-              onChange={(e) => setCheckType(e.target.value)}
-              disabled={isSubmitting}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="none">Без проверки</option>
-              <option value="selective">Выборочная проверка</option>
-            </select>
+            <div className="relative check-type-dropdown">
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                disabled={isSubmitting}
+                className="w-full justify-between"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setCheckTypePopoverOpen(!checkTypePopoverOpen);
+                }}
+              >
+                {checkType === 'none' ? 'Без проверки' : 'Выборочная проверка'}
+                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+              
+              {checkTypePopoverOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                  <div className="max-h-60 overflow-y-auto">
+                    <div
+                      className="px-2 py-2 hover:bg-gray-100 cursor-pointer rounded"
+                      onClick={() => {
+                        setCheckType('none');
+                        setCheckTypePopoverOpen(false);
+                      }}
+                    >
+                      Без проверки
+                    </div>
+                    <div
+                      className="px-2 py-2 hover:bg-gray-100 cursor-pointer rounded"
+                      onClick={() => {
+                        setCheckType('selective');
+                        setCheckTypePopoverOpen(false);
+                      }}
+                    >
+                      Выборочная проверка
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 p-3 text-sm text-red-500 bg-red-50 rounded-md">
+            <div className="flex items-center gap-2 p-3 text-red-500 bg-red-50 rounded-md">
               <AlertCircle className="h-4 w-4" />
               <span>{error}</span>
             </div>
