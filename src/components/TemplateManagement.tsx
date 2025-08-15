@@ -31,6 +31,7 @@ interface Fewshot {
 
 interface TemplateFormData {
   template_file: File | null;
+  name: string;
 }
 
 export const TemplateManagement = () => {
@@ -56,7 +57,8 @@ export const TemplateManagement = () => {
   });
   const [deletingFewshot, setDeletingFewshot] = useState<Fewshot | null>(null);
   const [formData, setFormData] = useState<TemplateFormData>({
-    template_file: null
+    template_file: null,
+    name: ''
   });
   
   const [editFormData, setEditFormData] = useState<{
@@ -150,6 +152,11 @@ export const TemplateManagement = () => {
       const formDataToSend = new FormData();
       formDataToSend.append('template_file', formData.template_file);
       
+      // Добавляем название категории товаров
+      if (formData.name.trim()) {
+        formDataToSend.append('name', formData.name.trim());
+      }
+      
       const response = await fetch(`${API_URL}/templates`, {
         method: 'POST',
         headers: {
@@ -164,7 +171,7 @@ export const TemplateManagement = () => {
       const newTemplate = await response.json();
       setTemplates([...templates, newTemplate]);
       setIsAddModalOpen(false);
-      setFormData({ template_file: null });
+      setFormData({ template_file: null, name: '' });
       // Сбрасываем на первую страницу при добавлении
       setCurrentPage(1);
     } catch (err) {
@@ -509,7 +516,8 @@ export const TemplateManagement = () => {
         <Button
           onClick={() => {
             setFormData({
-              template_file: null
+              template_file: null,
+              name: ''
             });
             setIsAddModalOpen(true);
           }}
@@ -720,6 +728,20 @@ export const TemplateManagement = () => {
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold mb-4">Добавить шаблон</h3>
             <form onSubmit={handleAddTemplate} className="space-y-4">
+              <div>
+                <Label htmlFor="name">Название категории товаров</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Введите название категории товаров"
+                  className="w-full"
+                  required
+                />
+              </div>
+              
               <div>
                 <Label htmlFor="template_file">Файл шаблона</Label>
                 <Input

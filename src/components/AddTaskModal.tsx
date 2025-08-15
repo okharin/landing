@@ -118,7 +118,7 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
       return;
     }
 
-    if (!showCustomTemplate && !selectedTemplate) {
+    if (!selectedTemplate) {
       setError('Выберите категорию товаров');
       return;
     }
@@ -145,6 +145,12 @@ export function AddTaskModal({ onAddTask }: AddTaskModalProps) {
           // Создаем FormData для отправки файла шаблона
           const formData = new FormData();
           formData.append('template_file', customTemplateFile);
+          
+          // Добавляем название категории товаров
+          const selectedTemplateName = templates.find(template => template.id === selectedTemplate)?.name;
+          if (selectedTemplateName) {
+            formData.append('name', selectedTemplateName);
+          }
           
           const templateResponse = await fetch('/api/templates', {
             method: 'POST',
